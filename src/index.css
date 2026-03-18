@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Doc+ Medical Design System - Professional medical interface colors and gradients */
+
+@layer base {
+  :root {
+    /* Modern Medical Base - Clean slate-50 and slate-900 */
+    --background: 210 40% 98%; /* Slate-50: #f8fafc */
+    --foreground: 222 47% 11%; /* Slate-900: #0f172a */
+
+    /* Card colors - Crisp white with subtle elevation */
+    --card: 0 0% 100%; /* Pure white */
+    --card-foreground: 222 47% 11%; /* Slate-900 */
+
+    /* Popover colors */
+    --popover: 0 0% 100%; /* Pure white */
+    --popover-foreground: 222 47% 11%; /* Slate-900 */
+
+    /* Medical primary - #5343e5 */
+    --primary: 246 75% 58%; /* #5343e5 */
+    --primary-foreground: 0 0% 100%; /* Pure white */
+    --primary-hover: 246 75% 53%; /* Darker primary */
+
+    /* Medical secondary */
+    --secondary: 214 32% 91%; /* Slate-200 */
+    --secondary-foreground: 222 47% 11%; /* Slate-900 */
+    --secondary-hover: 214 32% 86%; 
+
+    /* Muted colors - Soft neutral grays */
+    --muted: 210 40% 96%; /* Slate-100 */
+    --muted-foreground: 215 16% 47%; /* Slate-500 */
+
+    /* Accent - Light primary */
+    --accent: 246 75% 96%; /* Very light primary */
+    --accent-foreground: 246 75% 58%; /* Primary */
+
+    /* Destructive - Modern coral red */
+    --destructive: 0 84% 60%; /* Red-500 */
+    --destructive-foreground: 0 0% 100%; /* Pure white */
+
+    /* Borders and inputs - Subtle grays */
+    --border: 214 32% 91%; /* Slate-200 */
+    --input: 214 32% 91%; /* Slate-200 */
+    --ring: 246 75% 58%; /* Primary ring */
+
+    /* Border radius - Modern rounded */
+    --radius: 0.5rem; /* Clean modern radius */
+
+    /* Modern medical gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(194 74% 56%), hsl(168 76% 42%));
+    --gradient-secondary: linear-gradient(135deg, hsl(168 76% 42%), hsl(194 74% 56%));
+    --gradient-hero: linear-gradient(135deg, hsl(194 74% 56%) 0%, hsl(168 76% 42%) 50%, hsl(194 74% 66%) 100%);
+
+    /* Sidebar colors - Clean medical theme */
+    --sidebar-background: 0 0% 100%; /* Pure white */
+    --sidebar-foreground: 222 47% 11%; /* Slate-900 */
+    --sidebar-primary: 246 75% 58%; /* Primary */
+    --sidebar-primary-foreground: 0 0% 100%; /* Pure white */
+    --sidebar-accent: 210 40% 96%; /* Slate-100 */
+    --sidebar-accent-foreground: 222 47% 11%; /* Slate-900 */
+    --sidebar-border: 214 32% 91%; /* Slate-200 */
+    --sidebar-ring: 246 75% 58%; /* Primary ring */
+
+    /* Status colors - Modern medical palette */
+    --success: 168 76% 42%; /* Mint green */
+    --success-foreground: 0 0% 100%; /* Pure white */
+    --warning: 38 92% 50%; /* Modern amber */
+    --warning-foreground: 0 0% 100%; /* Pure white */
+    --info: 199 89% 48%; /* Sky blue */
+    --info-foreground: 0 0% 100%; /* Pure white */
+  }
+
+  .dark {
+    /* Modern dark medical theme */
+    --background: 215 32% 6%; /* Very dark blue-gray */
+    --foreground: 0 0% 98%; /* Pure white */
+
+    --card: 215 32% 8%; /* Dark blue-gray card */
+    --card-foreground: 0 0% 98%; /* Pure white */
+
+    --popover: 215 32% 8%; /* Dark blue-gray */
+    --popover-foreground: 0 0% 98%; /* Pure white */
+
+    --primary: 194 74% 56%; /* Modern teal */
+    --primary-foreground: 0 0% 100%; /* Pure white */
+
+    --secondary: 168 76% 42%; /* Mint green */
+    --secondary-foreground: 0 0% 100%; /* Pure white */
+
+    --muted: 215 32% 12%; /* Dark muted */
+    --muted-foreground: 215 16% 65%; /* Light gray */
+
+    --accent: 215 32% 12%; /* Dark accent */
+    --accent-foreground: 194 74% 56%; /* Teal accent */
+
+    --destructive: 351 95% 71%; /* Coral red */
+    --destructive-foreground: 0 0% 100%; /* Pure white */
+
+    --border: 215 32% 15%; /* Dark border */
+    --input: 215 32% 15%; /* Dark input */
+    --ring: 194 74% 56%; /* Teal ring */
+
+    --sidebar-background: 215 32% 4%; /* Very dark sidebar */
+    --sidebar-foreground: 0 0% 98%; /* Pure white */
+    --sidebar-primary: 194 74% 56%; /* Modern teal */
+    --sidebar-primary-foreground: 0 0% 100%; /* Pure white */
+    --sidebar-accent: 215 32% 12%; /* Dark accent */
+    --sidebar-accent-foreground: 194 74% 56%; /* Teal accent */
+    --sidebar-border: 215 32% 15%; /* Dark border */
+    --sidebar-ring: 194 74% 56%; /* Teal ring */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
