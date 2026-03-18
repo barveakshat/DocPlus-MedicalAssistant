@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Users, 
   Calendar, 
@@ -15,30 +17,304 @@ import {
   Bot
 } from 'lucide-react';
 
+type DashboardPatient = {
+  id: string;
+  user_id: string | null;
+  name: string;
+  medical_history: string | null;
+  created_at: string;
+};
+
+type DashboardSession = {
+  id: string;
+  participant_1_id: string | null;
+  participant_2_id: string | null;
+  last_message_at: string | null;
+};
+
+type DashboardMessage = {
+  id: string;
+  sender_id: string | null;
+  session_id: string;
+  is_read: boolean | null;
+  created_at: string;
+};
+
+type DashboardScheduleItem = {
+  id: string;
+  name: string;
+  time: string;
+  type: string;
+  status: 'Completed' | 'In Progress' | 'Waiting' | 'Scheduled';
+};
+
+type DashboardInsight = {
+  id: string;
+  patient: string;
+  insight: string;
+  priority: 'High' | 'Medium' | 'Low';
+};
+
 const DoctorDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [patients, setPatients] = useState<DashboardPatient[]>([]);
+  const [sessions, setSessions] = useState<DashboardSession[]>([]);
+  const [messages, setMessages] = useState<DashboardMessage[]>([]);
+  const [doctorUserId, setDoctorUserId] = useState<string | null>(null);
 
-  // Mock data for the dashboard
-  const kpis = [
-    { label: "Total Patients", value: "1,248", icon: Users, trend: "+12 this week", trendUp: true, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Today's Consults", value: "14", icon: Calendar, trend: "4 remaining", trendUp: true, color: "text-purple-600", bg: "bg-purple-50" },
-    { label: "Pending Reviews", value: "7", icon: Activity, trend: "3 critical", trendUp: false, color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "Unread Messages", value: "24", icon: MessageSquare, trend: "From 8 patients", trendUp: false, color: "text-emerald-600", bg: "bg-emerald-50" },
-  ];
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
-  const todaySchedule = [
-    { id: 1, name: "Elena Wong", time: "09:00 AM", type: "Follow-up", status: "Completed", avatar: "E" },
-    { id: 2, name: "Robert Miller", time: "10:30 AM", type: "Consultation", status: "In Progress", avatar: "R" },
-    { id: 3, name: "Alice Smith", time: "01:15 PM", type: "Lab Review", status: "Waiting", avatar: "A" },
-    { id: 4, name: "Johnathan Doe", time: "03:00 PM", type: "General Checkup", status: "Scheduled", avatar: "J" },
-  ];
+  const getPriorityFromPatient = (patient: DashboardPatient): 'High' | 'Medium' | 'Low' => {
+    const medicalHistoryLength = patient.medical_history?.trim().length || 0;
+    if (medicalHistoryLength > 180) return 'High';
+    if (medicalHistoryLength > 40) return 'Medium';
+    return 'Low';
+  };
 
-  const aiInsights = [
-    { id: 1, patient: "Alice Smith", insight: "Blood pressure trends indicate potential hypertension risk based on last 3 encounters.", priority: "High" },
-    { id: 2, patient: "Robert Miller", insight: "Medication adherence seems low. AI suggests scheduling a follow-up to discuss side effects.", priority: "Medium" },
-    { id: 3, patient: "Elena Wong", insight: "Lab results normal. AI drafted a 'Good News' summary ready for your approval to send.", priority: "Low" }
-  ];
+  const getInsightText = (patient: DashboardPatient, unreadCount: number) => {
+    if (unreadCount > 0) {
+      return `${unreadCount} unread patient message${unreadCount > 1 ? 's' : ''} pending your response.`;
+    }
+
+    if (patient.medical_history?.trim()) {
+      return `Medical history available. Review latest notes before the next consultation.`;
+    }
+
+    return 'Profile details are limited. Consider collecting additional history in the next follow-up.';
+  };
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user?.id || user.role !== 'doctor') {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        const { data: doctor, error: doctorError } = await supabase
+          .from('doctors')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (doctorError) throw doctorError;
+
+        const currentDoctorUserId = doctor?.user_id || user.auth_user_id || user.id;
+        setDoctorUserId(currentDoctorUserId);
+
+        const { data: patientsData, error: patientsError } = await supabase
+          .from('patients')
+          .select('id, user_id, name, medical_history, created_at')
+          .eq('assigned_doctor_id', currentDoctorUserId)
+          .order('created_at', { ascending: false });
+
+        if (patientsError) throw patientsError;
+
+        const { data: sessionsData, error: sessionsError } = await supabase
+          .from('chat_sessions')
+          .select('id, participant_1_id, participant_2_id, last_message_at')
+          .eq('session_type', 'doctor-patient')
+          .or(`participant_1_id.eq.${currentDoctorUserId},participant_2_id.eq.${currentDoctorUserId}`)
+          .order('last_message_at', { ascending: false, nullsFirst: false });
+
+        if (sessionsError) throw sessionsError;
+
+        const sessionIds = (sessionsData || []).map((session) => session.id);
+        let messagesData: DashboardMessage[] = [];
+
+        if (sessionIds.length > 0) {
+          const { data: fetchedMessages, error: messagesError } = await supabase
+            .from('messages')
+            .select('id, sender_id, session_id, is_read, created_at')
+            .in('session_id', sessionIds)
+            .order('created_at', { ascending: false });
+
+          if (messagesError) throw messagesError;
+          messagesData = fetchedMessages || [];
+        }
+
+        setPatients((patientsData || []) as DashboardPatient[]);
+        setSessions((sessionsData || []) as DashboardSession[]);
+        setMessages(messagesData);
+      } catch (error) {
+        console.error('Error loading doctor dashboard data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load dashboard data',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user, toast]);
+
+  const unreadMessages = useMemo(
+    () => messages.filter((message) => !message.is_read && message.sender_id !== doctorUserId).length,
+    [messages, doctorUserId]
+  );
+
+  const todayRange = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }, []);
+
+  const todaysConsults = useMemo(
+    () => sessions.filter((session) => {
+      if (!session.last_message_at) return false;
+      const timestamp = new Date(session.last_message_at);
+      return timestamp >= todayRange.start && timestamp <= todayRange.end;
+    }).length,
+    [sessions, todayRange]
+  );
+
+  const newPatientsThisWeek = useMemo(() => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - 7);
+    return patients.filter((patient) => new Date(patient.created_at) >= weekStart).length;
+  }, [patients]);
+
+  const waitingReviews = useMemo(() => {
+    const patientUserIdsWithUnread = new Set(
+      sessions
+        .filter((session) =>
+          messages.some(
+            (message) =>
+              message.session_id === session.id &&
+              !message.is_read &&
+              message.sender_id !== doctorUserId
+          )
+        )
+        .map((session) =>
+          session.participant_1_id === doctorUserId ? session.participant_2_id : session.participant_1_id
+        )
+        .filter(Boolean)
+    );
+
+    return patientUserIdsWithUnread.size;
+  }, [sessions, messages, doctorUserId]);
+
+  const kpis = useMemo(
+    () => [
+      {
+        label: 'Total Patients',
+        value: patients.length.toLocaleString(),
+        icon: Users,
+        trend: `${newPatientsThisWeek} new this week`,
+        trendUp: true,
+        color: 'text-blue-600',
+        bg: 'bg-blue-50',
+      },
+      {
+        label: "Today's Consults",
+        value: todaysConsults.toString(),
+        icon: Calendar,
+        trend: `${sessions.length} total chats`,
+        trendUp: todaysConsults > 0,
+        color: 'text-purple-600',
+        bg: 'bg-purple-50',
+      },
+      {
+        label: 'Pending Reviews',
+        value: waitingReviews.toString(),
+        icon: Activity,
+        trend: waitingReviews > 0 ? 'Requires follow-up' : 'All clear',
+        trendUp: false,
+        color: 'text-amber-600',
+        bg: 'bg-amber-50',
+      },
+      {
+        label: 'Unread Messages',
+        value: unreadMessages.toString(),
+        icon: MessageSquare,
+        trend: `${sessions.length} active sessions`,
+        trendUp: false,
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-50',
+      },
+    ],
+    [patients.length, newPatientsThisWeek, todaysConsults, waitingReviews, unreadMessages, sessions.length]
+  );
+
+  const todaySchedule = useMemo<DashboardScheduleItem[]>(() => {
+    const patientMap = new Map(
+      patients
+        .filter((patient) => !!patient.user_id)
+        .map((patient) => [patient.user_id!, patient])
+    );
+
+    return sessions.slice(0, 5).map((session) => {
+      const patientUserId = session.participant_1_id === doctorUserId ? session.participant_2_id : session.participant_1_id;
+      const patient = patientUserId ? patientMap.get(patientUserId) : null;
+      const unreadInSession = messages.filter(
+        (message) => message.session_id === session.id && !message.is_read && message.sender_id !== doctorUserId
+      ).length;
+
+      let status: DashboardScheduleItem['status'] = 'Scheduled';
+      if (unreadInSession > 0) status = 'Waiting';
+      else if (session.last_message_at) {
+        const sessionDate = new Date(session.last_message_at);
+        const hoursSinceLastMessage = (Date.now() - sessionDate.getTime()) / (1000 * 60 * 60);
+        status = hoursSinceLastMessage < 1 ? 'In Progress' : 'Completed';
+      }
+
+      return {
+        id: session.id,
+        name: patient?.name || 'Unknown Patient',
+        time: session.last_message_at ? formatTime(session.last_message_at) : 'Not started',
+        type: unreadInSession > 0 ? 'Message Follow-up' : 'Consultation Chat',
+        status,
+      };
+    });
+  }, [sessions, patients, messages, doctorUserId]);
+
+  const aiInsights = useMemo<DashboardInsight[]>(() => {
+    const unreadByPatientUserId = new Map<string, number>();
+
+    sessions.forEach((session) => {
+      const patientUserId = session.participant_1_id === doctorUserId ? session.participant_2_id : session.participant_1_id;
+      if (!patientUserId) return;
+
+      const unreadCount = messages.filter(
+        (message) =>
+          message.session_id === session.id &&
+          !message.is_read &&
+          message.sender_id !== doctorUserId
+      ).length;
+
+      if (unreadCount > 0) {
+        unreadByPatientUserId.set(patientUserId, unreadCount);
+      }
+    });
+
+    return patients.slice(0, 3).map((patient) => {
+      const unreadCount = patient.user_id ? unreadByPatientUserId.get(patient.user_id) || 0 : 0;
+      const priority = getPriorityFromPatient(patient);
+
+      return {
+        id: patient.id,
+        patient: patient.name,
+        insight: getInsightText(patient, unreadCount),
+        priority,
+      };
+    });
+  }, [patients, sessions, messages, doctorUserId]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -131,7 +407,11 @@ const DoctorDashboard = () => {
               </div>
               
               <div className="divide-y divide-slate-100/80 flex-1 overflow-y-auto">
-                {todaySchedule.map((appt) => (
+                {loading ? (
+                  <div className="p-6 text-center text-slate-500 text-sm font-medium">Loading schedule...</div>
+                ) : todaySchedule.length === 0 ? (
+                  <div className="p-6 text-center text-slate-500 text-sm font-medium">No consultations yet.</div>
+                ) : todaySchedule.map((appt) => (
                   <div key={appt.id} className="p-6 hover:bg-slate-50/50 transition-colors flex items-center justify-between group cursor-pointer border-l-2 border-transparent hover:border-[#5442f5]">
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-sm shadow-sm ring-2 ring-white overflow-hidden">
@@ -179,7 +459,11 @@ const DoctorDashboard = () => {
               </div>
               
               <div className="p-6 space-y-4 flex-1 relative z-10">
-                {aiInsights.map((insight) => (
+                {loading ? (
+                  <div className="text-[13px] text-slate-600">Generating insights from your patient data...</div>
+                ) : aiInsights.length === 0 ? (
+                  <div className="text-[13px] text-slate-600">No patient data available for insights yet.</div>
+                ) : aiInsights.map((insight) => (
                   <div key={insight.id} className="bg-white rounded-lg p-4 shadow-sm border border-[#e8e4ff] relative overflow-hidden group">
                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${insight.priority === 'High' ? 'bg-red-500' : insight.priority === 'Medium' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
                     
@@ -199,7 +483,10 @@ const DoctorDashboard = () => {
                     </p>
                     
                     <div className="mt-3 pl-2 flex justify-end">
-                      <button className="text-[12px] font-bold text-[#5442f5] hover:text-[#4335c0] transition-colors">
+                      <button
+                        onClick={() => navigate('/patients')}
+                        className="text-[12px] font-bold text-[#5442f5] hover:text-[#4335c0] transition-colors"
+                      >
                         Review Case &rarr;
                       </button>
                     </div>

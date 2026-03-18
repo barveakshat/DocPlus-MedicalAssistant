@@ -409,7 +409,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, onSessionUpdate, onNew
           
           <div className="flex justify-center mb-8">
             <span className="bg-slate-100 text-slate-500 text-[11px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
-              Today, Oct 24
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+              })}
             </span>
           </div>
           {messages.length === 0 && !isLoading && (

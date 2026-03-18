@@ -112,10 +112,12 @@ const DoctorChat = () => {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)]">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading chat...</p>
+      <div className="flex-1 h-full overflow-y-auto bg-[#fafafa] p-6 md:p-8">
+        <div className="w-full">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading chat...</p>
+          </div>
         </div>
       </div>
     );
@@ -124,47 +126,53 @@ const DoctorChat = () => {
   // No patient selected — show a prompt
   if (!navPatientId || !patientInfo) {
     return (
-      <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex items-center justify-center">
-        <Card className="text-center py-12 px-8">
-          <CardContent>
-            <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Patient Selected</h3>
-            <p className="text-muted-foreground">
-              Go to the <strong>Patients</strong> page and click the chat icon next to a patient's name to start a conversation.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex-1 h-full overflow-y-auto bg-[#fafafa] p-6 md:p-8">
+        <div className="w-full min-h-full flex items-center justify-center">
+          <Card className="text-center py-12 px-8">
+            <CardContent>
+              <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Patient Selected</h3>
+              <p className="text-muted-foreground">
+                Go to the <strong>Patients</strong> page and click the chat icon next to a patient's name to start a conversation.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)]">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Chat with Patient</h1>
-            <p className="text-muted-foreground">
-              Secure messaging with {patientInfo.name}
-            </p>
-          </div>
-          <div className="flex items-center space-x-3 bg-accent/50 px-4 py-2 rounded-lg">
-            <Stethoscope className="h-5 w-5 text-primary" />
+    <div className="flex-1 h-full overflow-hidden bg-[#fafafa] p-6 md:p-8">
+      <div className="w-full h-full flex flex-col min-h-0">
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="font-medium">{patientInfo.name}</p>
-              {patientInfo.email && (
-                <p className="text-sm text-muted-foreground">{patientInfo.email}</p>
-              )}
+              <h1 className="text-3xl font-bold text-foreground mb-2">Chat with Patient</h1>
+              <p className="text-muted-foreground">
+                Secure messaging with {patientInfo.name}
+              </p>
+            </div>
+            <div className="flex items-center space-x-3 bg-accent/50 px-4 py-2 rounded-lg">
+              <Stethoscope className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-medium">{patientInfo.name}</p>
+                {patientInfo.email && (
+                  <p className="text-sm text-muted-foreground">{patientInfo.email}</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <DoctorPatientChatWindow
-        session={currentSession}
-        onSessionUpdate={handleSessionUpdate}
-        isLoading={loading}
-      />
+        <div className="flex-1 min-h-0 pb-2">
+          <DoctorPatientChatWindow
+            session={currentSession}
+            onSessionUpdate={handleSessionUpdate}
+            isLoading={loading}
+          />
+        </div>
+      </div>
     </div>
   );
 };

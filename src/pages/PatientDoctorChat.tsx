@@ -25,29 +25,40 @@ interface DoctorPatientChatSession {
   updated_at: string;
 }
 
+interface PatientCarePlanInfo {
+  care_plan: string | null;
+  follow_up_date: string | null;
+}
+
 const PatientDoctorChat = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null);
   const [currentSession, setCurrentSession] = useState<DoctorPatientChatSession | null>(null);
+  const [carePlanInfo, setCarePlanInfo] = useState<PatientCarePlanInfo>({
+    care_plan: null,
+    follow_up_date: null,
+  });
   const [loading, setLoading] = useState(true);
 
   // Check if user is a patient
   if (!user || user.role !== 'patient') {
     return (
-      <div className="max-w-4xl mx-auto">
-        <Card className="text-center py-12">
-          <CardContent>
-            <Stethoscope className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
-            <p className="text-muted-foreground mb-4">
-              This page is only accessible to patients. Please log in as a patient to access doctor chat.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Current user role: {user?.role || 'Not logged in'}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex-1 h-full overflow-y-auto bg-[#fafafa] p-6 md:p-8">
+        <div className="w-full">
+          <Card className="text-center py-12">
+            <CardContent>
+              <Stethoscope className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
+              <p className="text-muted-foreground mb-4">
+                This page is only accessible to patients. Please log in as a patient to access doctor chat.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Current user role: {user?.role || 'Not logged in'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -83,7 +94,7 @@ const PatientDoctorChat = () => {
       // Get patient's assigned doctor
       const { data: patientData, error: patientError } = await supabase
         .from('patients')
-        .select('assigned_doctor_id, name, email')
+        .select('assigned_doctor_id, name, email, care_plan, follow_up_date')
         .eq('user_id', user.id)
         .single();
 
@@ -119,7 +130,7 @@ const PatientDoctorChat = () => {
               current_medications: '',
               assigned_doctor_id: doctorId // Use available doctor or null if none found
             })
-            .select('assigned_doctor_id, name, email')
+            .select('assigned_doctor_id, name, email, care_plan, follow_up_date')
             .single();
 
           if (createError) {
@@ -186,6 +197,10 @@ const PatientDoctorChat = () => {
 
       console.log('Patient data found:', patientData);
       console.log('Assigned doctor ID:', patientData?.assigned_doctor_id);
+      setCarePlanInfo({
+        care_plan: patientData?.care_plan || null,
+        follow_up_date: patientData?.follow_up_date || null,
+      });
 
       if (!patientData?.assigned_doctor_id) {
         console.log('No assigned doctor found, showing message');
@@ -276,10 +291,12 @@ const PatientDoctorChat = () => {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your doctor information...</p>
+      <div className="flex-1 h-full overflow-y-auto bg-[#fafafa] p-6 md:p-8">
+        <div className="w-full">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your doctor information...</p>
+          </div>
         </div>
       </div>
     );
@@ -287,50 +304,76 @@ const PatientDoctorChat = () => {
 
   if (!doctorInfo) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <Card className="text-center py-12">
-          <CardContent>
-            <Stethoscope className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Doctor Assigned</h3>
-            <p className="text-muted-foreground mb-4">
-              You haven't been assigned a doctor yet. Please contact the clinic for assistance.
-            </p>
-            <Button onClick={() => window.history.back()}>
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex-1 h-full overflow-y-auto bg-[#fafafa] p-6 md:p-8">
+        <div className="w-full">
+          <Card className="text-center py-12">
+            <CardContent>
+              <Stethoscope className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Doctor Assigned</h3>
+              <p className="text-muted-foreground mb-4">
+                You haven't been assigned a doctor yet. Please contact the clinic for assistance.
+              </p>
+              <Button onClick={() => window.history.back()}>
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)]">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Chat with Your Doctor</h1>
-            <p className="text-muted-foreground">
-              Secure messaging with Dr. {doctorInfo.name}
-            </p>
-          </div>
-          <div className="flex items-center space-x-3 bg-accent/50 px-4 py-2 rounded-lg">
-            <Stethoscope className="h-5 w-5 text-primary" />
+    <div className="flex-1 h-full overflow-hidden bg-[#fafafa] p-6 md:p-8">
+      <div className="w-full h-full flex flex-col min-h-0">
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="font-medium">{doctorInfo.name}</p>
-              {doctorInfo.registration_no && (
-                <p className="text-sm text-muted-foreground">Reg: {doctorInfo.registration_no}</p>
-              )}
+              <h1 className="text-3xl font-bold text-foreground mb-2">Chat with Your Doctor</h1>
+              <p className="text-muted-foreground">
+                Secure messaging with Dr. {doctorInfo.name}
+              </p>
+            </div>
+            <div className="flex items-center space-x-3 bg-accent/50 px-4 py-2 rounded-lg">
+              <Stethoscope className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-medium">{doctorInfo.name}</p>
+                {doctorInfo.registration_no && (
+                  <p className="text-sm text-muted-foreground">Reg: {doctorInfo.registration_no}</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <DoctorPatientChatWindow
-        session={currentSession}
-        onSessionUpdate={handleSessionUpdate}
-        isLoading={loading}
-      />
+        {(carePlanInfo.care_plan || carePlanInfo.follow_up_date) && (
+          <Card className="mb-4 border-primary/20 bg-primary/5 shrink-0">
+            <CardHeader>
+              <CardTitle className="text-lg">My Care Plan</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {carePlanInfo.care_plan && (
+                <p className="text-sm text-foreground whitespace-pre-wrap max-h-24 overflow-y-auto pr-1">
+                  {carePlanInfo.care_plan}
+                </p>
+              )}
+              {carePlanInfo.follow_up_date && (
+                <p className="text-sm text-muted-foreground">
+                  Next follow-up: {new Date(carePlanInfo.follow_up_date).toLocaleDateString()}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex-1 min-h-0 pb-2">
+          <DoctorPatientChatWindow
+            session={currentSession}
+            onSessionUpdate={handleSessionUpdate}
+            isLoading={loading}
+          />
+        </div>
+      </div>
     </div>
   );
 };

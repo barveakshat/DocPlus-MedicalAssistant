@@ -3,11 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, User, Mail, Phone, Calendar, MapPin, AlertTriangle, Pill, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PatientDetail {
   id: string;
@@ -24,15 +28,26 @@ interface PatientDetail {
   emergency_contact_phone: string | null;
   created_at: string;
   assigned_doctor_id: string | null;
+  doctor_quick_notes: string | null;
+  care_plan: string | null;
+  follow_up_date: string | null;
+  user_id: string | null;
 }
 
 const PatientDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [patient, setPatient] = useState<PatientDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savingCarePlan, setSavingCarePlan] = useState(false);
+  const [careForm, setCareForm] = useState({
+    doctor_quick_notes: '',
+    care_plan: '',
+    follow_up_date: '',
+  });
 
   // Only allow doctors to access this page
   if (!user || user.role !== 'doctor') {
@@ -78,6 +93,11 @@ const PatientDetail = () => {
 
       console.log('Patient data fetched:', data);
       setPatient(data);
+      setCareForm({
+        doctor_quick_notes: data.doctor_quick_notes || '',
+        care_plan: data.care_plan || '',
+        follow_up_date: data.follow_up_date || '',
+      });
     } catch (err) {
       console.error('Error:', err);
       setError('Failed to load patient details');
@@ -88,7 +108,55 @@ const PatientDetail = () => {
 
   const startChat = () => {
     if (patient) {
-      navigate(`/chat/${patient.id}`);
+      navigate('/doctor-chat', {
+        state: {
+          patientId: patient.user_id,
+          patientName: patient.name,
+        },
+      });
+    }
+  };
+
+  const saveCareDetails = async () => {
+    if (!patient) return;
+
+    try {
+      setSavingCarePlan(true);
+      const { error: updateError } = await supabase
+        .from('patients')
+        .update({
+          doctor_quick_notes: careForm.doctor_quick_notes.trim() || null,
+          care_plan: careForm.care_plan.trim() || null,
+          follow_up_date: careForm.follow_up_date || null,
+        })
+        .eq('id', patient.id);
+
+      if (updateError) throw updateError;
+
+      setPatient((prev) =>
+        prev
+          ? {
+              ...prev,
+              doctor_quick_notes: careForm.doctor_quick_notes.trim() || null,
+              care_plan: careForm.care_plan.trim() || null,
+              follow_up_date: careForm.follow_up_date || null,
+            }
+          : prev
+      );
+
+      toast({
+        title: 'Saved',
+        description: 'Care plan details updated successfully.',
+      });
+    } catch (saveError) {
+      console.error('Failed to save care details:', saveError);
+      toast({
+        title: 'Save failed',
+        description: 'Unable to update care details right now.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingCarePlan(false);
     }
   };
 
@@ -153,6 +221,11 @@ const PatientDetail = () => {
                   {patient.gender && (
                     <Badge variant="outline">
                       {patient.gender}
+                    </Badge>
+                  )}
+                  {patient.follow_up_date && (
+                    <Badge variant="outline">
+                      Next Follow-Up: {new Date(patient.follow_up_date).toLocaleDateString()}
                     </Badge>
                   )}
                 </div>
@@ -278,6 +351,49 @@ const PatientDetail = () => {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Doctor Notes & Care Plan</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="doctor-quick-notes">Quick Notes</Label>
+                <Textarea
+                  id="doctor-quick-notes"
+                  value={careForm.doctor_quick_notes}
+                  onChange={(e) => setCareForm((prev) => ({ ...prev, doctor_quick_notes: e.target.value }))}
+                  placeholder="Short note like: Follow-up in 7 days"
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="patient-care-plan">Care Plan (for patient)</Label>
+                <Textarea
+                  id="patient-care-plan"
+                  value={careForm.care_plan}
+                  onChange={(e) => setCareForm((prev) => ({ ...prev, care_plan: e.target.value }))}
+                  placeholder="Instructions for patient care"
+                  rows={4}
+                />
+              </div>
+
+              <div className="space-y-2 max-w-xs">
+                <Label htmlFor="follow-up-date">Next Follow-Up Date</Label>
+                <Input
+                  id="follow-up-date"
+                  type="date"
+                  value={careForm.follow_up_date}
+                  onChange={(e) => setCareForm((prev) => ({ ...prev, follow_up_date: e.target.value }))}
+                />
+              </div>
+
+              <Button onClick={saveCareDetails} disabled={savingCarePlan}>
+                {savingCarePlan ? 'Saving...' : 'Save Care Details'}
+              </Button>
             </CardContent>
           </Card>
         </div>

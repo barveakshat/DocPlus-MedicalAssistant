@@ -6,6 +6,7 @@ import DoctorChat from "./pages/DoctorChat";
 import PatientDoctorChat from "./pages/PatientDoctorChat";
 import PatientRegistration from "./pages/PatientRegistration";
 import Patients from "./pages/Patients";
+import ClinicalModules from "./pages/ClinicalModules";
 import NotFound from "./pages/NotFound";
 import PatientDetail from "./pages/PatientDetail";
 import RoleSelectionPage from "./pages/RoleSelectionPage";
@@ -117,6 +118,10 @@ const AuthenticatedRoutes: React.FC = () => {
           <Route
             path="/patient/:id"
             element={<DashboardLayout><PatientDetail /></DashboardLayout>}
+          />
+          <Route
+            path="/clinical-modules"
+            element={<DashboardLayout><ClinicalModules /></DashboardLayout>}
           />
         </>
       )}

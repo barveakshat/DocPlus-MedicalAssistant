@@ -14,6 +14,11 @@ interface ChatMessage {
   senderId: string;
   content?: string;
   messageId?: string;
+  messageType?: 'text' | 'image' | 'file';
+  attachmentName?: string;
+  attachmentMimeType?: string;
+  attachmentSize?: number;
+  attachmentPath?: string;
   timestamp: string;
 }
 

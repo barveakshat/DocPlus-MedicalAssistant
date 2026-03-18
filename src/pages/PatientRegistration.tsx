@@ -304,7 +304,8 @@ const PatientRegistration = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="flex-1 h-full overflow-y-auto bg-[#fafafa] p-6 md:p-8">
+      <div className="max-w-2xl mx-auto pb-8">
       <div className="mb-6">
         <Link to="/patients">
           <Button variant="ghost" className="mb-4">
@@ -539,6 +540,7 @@ const PatientRegistration = () => {
           onClose={() => setShowCredentialsModal(false)}
         />
       )}
+      </div>
     </div>
   );
 };

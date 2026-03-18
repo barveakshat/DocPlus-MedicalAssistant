@@ -79,29 +79,44 @@ export type Database = {
       }
       messages: {
         Row: {
-          content: string
+          attachment_mime_type: string | null
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_size: number | null
+          content: string | null
           created_at: string
           id: string
           is_ai_message: boolean | null
           is_read: boolean | null
+          message_type: string
           sender_id: string | null
           session_id: string
         }
         Insert: {
-          content: string
+          attachment_mime_type?: string | null
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          content?: string | null
           created_at?: string
           id?: string
           is_ai_message?: boolean | null
           is_read?: boolean | null
+          message_type?: string
           sender_id?: string | null
           session_id: string
         }
         Update: {
-          content?: string
+          attachment_mime_type?: string | null
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          content?: string | null
           created_at?: string
           id?: string
           is_ai_message?: boolean | null
           is_read?: boolean | null
+          message_type?: string
           sender_id?: string | null
           session_id?: string
         }
@@ -121,11 +136,14 @@ export type Database = {
           age: number | null
           allergies: string | null
           assigned_doctor_id: string | null
+          care_plan: string | null
           created_at: string
           current_medications: string | null
+          doctor_quick_notes: string | null
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
+          follow_up_date: string | null
           gender: string | null
           id: string
           medical_history: string | null
@@ -140,11 +158,14 @@ export type Database = {
           age?: number | null
           allergies?: string | null
           assigned_doctor_id?: string | null
+          care_plan?: string | null
           created_at?: string
           current_medications?: string | null
+          doctor_quick_notes?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          follow_up_date?: string | null
           gender?: string | null
           id?: string
           medical_history?: string | null
@@ -159,11 +180,14 @@ export type Database = {
           age?: number | null
           allergies?: string | null
           assigned_doctor_id?: string | null
+          care_plan?: string | null
           created_at?: string
           current_medications?: string | null
+          doctor_quick_notes?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          follow_up_date?: string | null
           gender?: string | null
           id?: string
           medical_history?: string | null

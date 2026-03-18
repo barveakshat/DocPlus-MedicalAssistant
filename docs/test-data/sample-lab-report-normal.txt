@@ -1,0 +1,15 @@
+DocPlus Demo Lab Report
+Patient: Demo Patient
+Date: 2026-03-19
+
+Investigations:
+- Glucose fasting: 98 mg/dL
+- BP: 122/78 mmHg
+- HbA1c: 5.5%
+- Hemoglobin: 13.8 g/dL
+
+Symptoms:
+- mild fatigue
+
+Medications:
+- metformin

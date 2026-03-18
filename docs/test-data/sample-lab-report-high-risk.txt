@@ -1,0 +1,19 @@
+DocPlus Demo Lab Report
+Patient: Demo Patient
+Date: 2026-03-19
+
+Investigations:
+- Glucose fasting: 286 mg/dL
+- BP: 186/124 mmHg
+- HbA1c: 8.4%
+- Hemoglobin: 10.8 g/dL
+
+Symptoms:
+- chest pain
+- shortness of breath
+- fatigue
+
+Medications:
+- warfarin
+- aspirin
+- metformin

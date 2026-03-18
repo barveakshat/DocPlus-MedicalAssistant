@@ -30,6 +30,7 @@ interface AuthContextType {
   isLoading: boolean;
   isCheckingProfile: boolean;
   setUser: (user: AuthUser | null) => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,6 +41,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingProfile, setIsCheckingProfile] = useState(false);
+
+  const refreshProfile = async () => {
+    if (!isClerkLoaded || !clerkUser) return;
+    const userRole = clerkUser.unsafeMetadata?.role as 'doctor' | 'patient' | undefined;
+    const onboardingComplete = clerkUser.unsafeMetadata?.onboardingComplete as boolean;
+
+    if (!userRole || !onboardingComplete) return;
+    setIsCheckingProfile(true);
+    await fetchUserProfile(clerkUser.id, userRole, onboardingComplete);
+  };
 
   useEffect(() => {
     const checkAuthState = async () => {
@@ -256,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signUp, logout, isLoading, isCheckingProfile, setUser }}>
+    <AuthContext.Provider value={{ user, login, signUp, logout, isLoading, isCheckingProfile, setUser, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,11 +6,24 @@ interface WebSocketMessage {
   senderId: string;
   content?: string;
   messageId?: string;
+  messageType?: 'text' | 'image' | 'file';
+  attachmentName?: string;
+  attachmentMimeType?: string;
+  attachmentSize?: number;
+  attachmentPath?: string;
   timestamp: string;
 }
 
 interface UseWebSocketReturn {
-  sendWsMessage: (content: string, messageId?: string) => void;
+  sendWsMessage: (payload: {
+    content?: string;
+    messageId?: string;
+    messageType?: 'text' | 'image' | 'file';
+    attachmentName?: string | null;
+    attachmentMimeType?: string | null;
+    attachmentSize?: number | null;
+    attachmentPath?: string | null;
+  }) => void;
   sendTypingIndicator: () => void;
   isConnected: boolean;
   onMessage: (callback: (message: WebSocketMessage) => void) => void;
@@ -105,12 +118,25 @@ export const useWebSocket = (sessionId: string | null, userId: string | null): U
     };
   }, [connect]);
 
-  const sendWsMessage = useCallback((content: string, messageId?: string) => {
+  const sendWsMessage = useCallback((payload: {
+    content?: string;
+    messageId?: string;
+    messageType?: 'text' | 'image' | 'file';
+    attachmentName?: string | null;
+    attachmentMimeType?: string | null;
+    attachmentSize?: number | null;
+    attachmentPath?: string | null;
+  }) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'message',
-        content,
-        messageId,
+        content: payload.content,
+        messageId: payload.messageId,
+        messageType: payload.messageType,
+        attachmentName: payload.attachmentName,
+        attachmentMimeType: payload.attachmentMimeType,
+        attachmentSize: payload.attachmentSize,
+        attachmentPath: payload.attachmentPath,
       }));
     }
   }, []);

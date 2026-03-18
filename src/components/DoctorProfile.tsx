@@ -15,7 +15,7 @@ interface DoctorProfileProps {
 }
 
 const DoctorProfile = ({ open, onOpenChange }: DoctorProfileProps) => {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -46,8 +46,7 @@ const DoctorProfile = ({ open, onOpenChange }: DoctorProfileProps) => {
       });
       
       onOpenChange(false);
-      // Refresh the page to update the user context
-      window.location.reload();
+      await refreshProfile();
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast({

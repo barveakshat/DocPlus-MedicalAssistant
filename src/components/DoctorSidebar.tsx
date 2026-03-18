@@ -18,7 +18,8 @@ import {
   Users,
   MessageCircle,
   BriefcaseMedical,
-  Plus
+  Plus,
+  ActivitySquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -33,6 +34,7 @@ const DoctorSidebar = () => {
     { title: 'Dashboard', url: '/dashboard/doctor', icon: LayoutDashboard },
     { title: 'AI Assistant', url: '/ai-chat', icon: MessageCircle },
     { title: 'Patients', url: '/patients', icon: Users },
+    { title: 'Clinical Modules', url: '/clinical-modules', icon: ActivitySquare },
   ];
 
   return (

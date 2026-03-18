@@ -16,8 +16,19 @@ type Patient = {
   email: string | null;
   phone: string | null;
   medical_history: string | null;
+  allergies: string | null;
+  current_medications: string | null;
+  gender: string | null;
+  follow_up_date: string | null;
+  doctor_quick_notes: string | null;
   created_at: string;
   user_id: string;
+};
+
+type PatientSignal = {
+  unreadCount: number;
+  lastMessageAt: string | null;
+  missingProfileFields: string[];
 };
 
 const Patients = () => {
@@ -26,6 +37,7 @@ const Patients = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [patientSignals, setPatientSignals] = useState<Record<string, PatientSignal>>({});
   const [loading, setLoading] = useState(true);
 
   // Pagination state
@@ -57,7 +69,80 @@ const Patients = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPatients(data || []);
+      const patientRows = (data || []) as Patient[];
+      setPatients(patientRows);
+
+      const patientUserIds = patientRows.map((patient) => patient.user_id).filter(Boolean);
+      if (patientUserIds.length === 0) {
+        setPatientSignals({});
+        return;
+      }
+
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('chat_sessions')
+        .select('id, participant_1_id, participant_2_id, last_message_at')
+        .eq('session_type', 'doctor-patient')
+        .or(`participant_1_id.eq.${doctor.user_id},participant_2_id.eq.${doctor.user_id}`);
+
+      if (sessionsError) throw sessionsError;
+
+      const sessionToPatientUserId: Record<string, string> = {};
+      const latestByPatient: Record<string, string | null> = {};
+
+      for (const session of sessions || []) {
+        const otherParticipant =
+          session.participant_1_id === doctor.user_id ? session.participant_2_id : session.participant_1_id;
+
+        if (otherParticipant && patientUserIds.includes(otherParticipant)) {
+          sessionToPatientUserId[session.id] = otherParticipant;
+          const existing = latestByPatient[otherParticipant];
+          if (!existing || (session.last_message_at && new Date(session.last_message_at) > new Date(existing))) {
+            latestByPatient[otherParticipant] = session.last_message_at;
+          }
+        }
+      }
+
+      const sessionIds = Object.keys(sessionToPatientUserId);
+      let unreadByPatient: Record<string, number> = {};
+
+      if (sessionIds.length > 0) {
+        const { data: unreadMessages, error: unreadError } = await supabase
+          .from('messages')
+          .select('session_id')
+          .in('session_id', sessionIds)
+          .neq('sender_id', doctor.user_id)
+          .eq('is_read', false);
+
+        if (unreadError) throw unreadError;
+
+        unreadByPatient = (unreadMessages || []).reduce<Record<string, number>>((acc, message) => {
+          const patientUserId = sessionToPatientUserId[message.session_id];
+          if (patientUserId) {
+            acc[patientUserId] = (acc[patientUserId] || 0) + 1;
+          }
+          return acc;
+        }, {});
+      }
+
+      const signals: Record<string, PatientSignal> = {};
+      for (const patient of patientRows) {
+        const missingFields: string[] = [];
+
+        if (!patient.phone?.trim()) missingFields.push('phone');
+        if (!patient.age) missingFields.push('age');
+        if (!patient.gender?.trim()) missingFields.push('gender');
+        if (!patient.medical_history?.trim()) missingFields.push('medical history');
+        if (!patient.allergies?.trim()) missingFields.push('allergies');
+        if (!patient.current_medications?.trim()) missingFields.push('medications');
+
+        signals[patient.user_id] = {
+          unreadCount: unreadByPatient[patient.user_id] || 0,
+          lastMessageAt: latestByPatient[patient.user_id] || null,
+          missingProfileFields: missingFields,
+        };
+      }
+
+      setPatientSignals(signals);
     } catch (error) {
       console.error('Error fetching patients:', error);
       toast({
@@ -84,16 +169,45 @@ const Patients = () => {
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 
   const getPatientStatus = (patient: Patient) => {
-    // Deterministic mock status based on name length
-    const hash = patient.name.length;
-    if (hash % 4 === 0) return { label: 'Critical', bg: 'bg-red-100', text: 'text-red-700' };
-    if (hash % 4 === 1) return { label: 'Review', bg: 'bg-[#fef3c7]', text: 'text-[#92400e]' };
-    return { label: 'Stable', bg: 'bg-[#d1fae5]', text: 'text-[#047857]' };
+    const signal = patientSignals[patient.user_id];
+
+    if (signal?.unreadCount > 0) {
+      return { label: 'Needs Reply', bg: 'bg-red-100', text: 'text-red-700' };
+    }
+
+    if ((signal?.missingProfileFields.length || 0) >= 3) {
+      return { label: 'Profile Incomplete', bg: 'bg-[#fef3c7]', text: 'text-[#92400e]' };
+    }
+
+    if (!signal?.lastMessageAt) {
+      return { label: 'No Chat Yet', bg: 'bg-slate-100', text: 'text-slate-700' };
+    }
+
+    const daysSinceLastMessage = Math.floor(
+      (Date.now() - new Date(signal.lastMessageAt).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysSinceLastMessage > 14) {
+      return { label: 'Dormant', bg: 'bg-slate-100', text: 'text-slate-700' };
+    }
+
+    return { label: 'Active', bg: 'bg-[#d1fae5]', text: 'text-[#047857]' };
   };
 
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: '2-digit', year: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
+  const formatLastMessageAge = (lastMessageAt: string | null) => {
+    if (!lastMessageAt) return 'No messages';
+
+    const diffMs = Date.now() - new Date(lastMessageAt).getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
   };
 
   return (
@@ -134,14 +248,16 @@ const Patients = () => {
                   <th className="px-8 py-5">Name</th>
                   <th className="px-8 py-5">Age</th>
                   <th className="px-8 py-5">Status</th>
-                  <th className="px-8 py-5">Last Check-Up</th>
+                  <th className="px-8 py-5">Last Message</th>
+                  <th className="px-8 py-5">Quick Note</th>
+                  <th className="px-8 py-5">Follow-Up</th>
                   <th className="px-8 py-5 text-right w-32">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-8 py-32 text-center">
+                    <td colSpan={7} className="px-8 py-32 text-center">
                       <div className="flex flex-col items-center justify-center space-y-4">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5442f5]"></div>
                         <p className="text-slate-500 font-medium">Loading records...</p>
@@ -150,7 +266,7 @@ const Patients = () => {
                   </tr>
                 ) : paginatedPatients.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-8 py-32 text-center">
+                    <td colSpan={7} className="px-8 py-32 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <div className="bg-slate-50 rounded-full p-6 mb-2">
                           <Search className="h-10 w-10 text-slate-300" />
@@ -167,6 +283,7 @@ const Patients = () => {
                 ) : (
                   paginatedPatients.map((patient) => {
                     const status = getPatientStatus(patient);
+                    const signal = patientSignals[patient.user_id];
                     return (
                       <tr key={patient.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-8 py-5">
@@ -178,7 +295,14 @@ const Patients = () => {
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <span className="font-bold text-slate-800 text-[14px] leading-tight mb-0.5">{patient.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-800 text-[14px] leading-tight mb-0.5">{patient.name}</span>
+                                {(signal?.unreadCount || 0) > 0 && (
+                                  <Badge variant="destructive" className="h-5 text-[10px] px-1.5">
+                                    {signal?.unreadCount} new
+                                  </Badge>
+                                )}
+                              </div>
                               <span className="text-[13px] text-slate-500">{patient.email || 'No email provided'}</span>
                             </div>
                           </div>
@@ -192,7 +316,19 @@ const Patients = () => {
                           </Badge>
                         </td>
                         <td className="px-8 py-5 text-slate-500 font-medium text-[14px]">
-                          {formatDate(patient.created_at)}
+                          {formatLastMessageAge(signal?.lastMessageAt || null)}
+                        </td>
+                        <td className="px-8 py-5 text-slate-500 font-medium text-[13px] max-w-[220px] truncate">
+                          {patient.doctor_quick_notes?.trim() || '-'}
+                        </td>
+                        <td className="px-8 py-5">
+                          {patient.follow_up_date ? (
+                            <Badge variant="outline" className="font-semibold">
+                              {formatDate(patient.follow_up_date)}
+                            </Badge>
+                          ) : (
+                            <span className="text-slate-400 text-[13px]">-</span>
+                          )}
                         </td>
                         <td className="px-8 py-5 text-right">
                           <button

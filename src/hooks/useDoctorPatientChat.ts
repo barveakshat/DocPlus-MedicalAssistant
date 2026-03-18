@@ -6,7 +6,9 @@ import type { Database } from '@/integrations/supabase/types';
 
 // Types
 type DoctorPatientChatSession = Database['public']['Tables']['chat_sessions']['Row'] & { session_type: 'doctor-patient' };
-type DoctorPatientMessage = Database['public']['Tables']['messages']['Row'];
+type DoctorPatientMessage = Database['public']['Tables']['messages']['Row'] & {
+  attachment_signed_url?: string | null;
+};
 
 export const useDoctorPatientChat = (sessionId: string | null) => {
   const { user } = useAuth();
@@ -18,28 +20,37 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
   const effectiveUserId = user?.auth_user_id || user?.id || null;
   const { sendWsMessage, isConnected, onMessage } = useWebSocket(sessionId, effectiveUserId);
 
-  // Handle incoming WebSocket messages
-  useEffect(() => {
-    onMessage((wsMsg) => {
-      if (wsMsg.type === 'message' && wsMsg.content) {
-        const newMessage: DoctorPatientMessage = {
-          id: wsMsg.messageId || crypto.randomUUID(),
-          session_id: wsMsg.sessionId,
-          sender_id: wsMsg.senderId,
-          content: wsMsg.content,
-          is_read: false,
-          is_ai_message: false,
-          created_at: wsMsg.timestamp,
-        };
+  const getSignedAttachmentUrl = useCallback(async (attachmentPath: string | null): Promise<string | null> => {
+    if (!attachmentPath) return null;
 
-        setMessages(prev => {
-          const exists = prev.some(msg => msg.id === newMessage.id);
-          if (exists) return prev;
-          return [...prev, newMessage];
-        });
-      }
-    });
-  }, [onMessage]);
+    const { data, error } = await supabase
+      .storage
+      .from('chat-attachments')
+      .createSignedUrl(attachmentPath, 60 * 60 * 24 * 7);
+
+    if (error) {
+      return null;
+    }
+
+    return data?.signedUrl || null;
+  }, []);
+
+  const enrichMessageWithAttachmentUrl = useCallback(async (message: Database['public']['Tables']['messages']['Row']): Promise<DoctorPatientMessage> => {
+    if (!message.attachment_path) {
+      return { ...message, attachment_signed_url: null };
+    }
+
+    const signedUrl = await getSignedAttachmentUrl(message.attachment_path);
+    return {
+      ...message,
+      attachment_signed_url: signedUrl,
+    };
+  }, [getSignedAttachmentUrl]);
+
+  const enrichMessagesWithAttachmentUrls = useCallback(async (rawMessages: Database['public']['Tables']['messages']['Row'][]): Promise<DoctorPatientMessage[]> => {
+    const enrichedMessages = await Promise.all(rawMessages.map(enrichMessageWithAttachmentUrl));
+    return enrichedMessages;
+  }, [enrichMessageWithAttachmentUrl]);
 
   // Fetch sessions for this user
   const fetchSessions = useCallback(async () => {
@@ -70,7 +81,7 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, effectiveUserId]);
 
   // Fetch messages for current session
   const fetchMessages = useCallback(async () => {
@@ -93,14 +104,24 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
         return;
       }
 
-      setMessages(data || []);
+      const enrichedMessages = await enrichMessagesWithAttachmentUrls(data || []);
+      setMessages(enrichedMessages);
     } catch (error) {
       console.error('Error fetching messages:', error);
       setMessages([]);
     } finally {
       setLoading(false);
     }
-  }, [sessionId, user?.id]);
+  }, [sessionId, user?.id, enrichMessagesWithAttachmentUrls]);
+
+  // Handle incoming WebSocket messages by refetching from DB for consistency
+  useEffect(() => {
+    onMessage((wsMsg) => {
+      if (wsMsg.type === 'message' && wsMsg.sessionId === sessionId) {
+        void fetchMessages();
+      }
+    });
+  }, [onMessage, sessionId, fetchMessages]);
 
   // Get or create a session between doctor and patient
   const getOrCreateSession = useCallback(async (doctorId: string, patientId: string): Promise<string | null> => {
@@ -187,22 +208,49 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
   }, [user?.id, fetchSessions]);
 
   // Send a message — persists to Supabase AND broadcasts via WebSocket
-  const sendMessage = useCallback(async (content: string, targetSessionId: string) => {
+  const sendMessage = useCallback(async ({
+    targetSessionId,
+    content,
+    file,
+  }: {
+    targetSessionId: string;
+    content?: string;
+    file?: File | null;
+  }) => {
     if (!targetSessionId || !user?.id) return null;
 
+    const trimmedContent = content?.trim() || null;
+
+    if (!trimmedContent && !file) {
+      throw new Error('Please enter a message or select a file.');
+    }
+
     try {
-      // Get receiver ID
-      const { data: sessionData } = await supabase
-        .from('chat_sessions')
-        .select('participant_1_id, participant_2_id')
-        .eq('id', targetSessionId)
-        .maybeSingle();
+      let attachmentPath: string | null = null;
+      let messageType: 'text' | 'image' | 'file' = 'text';
 
-      if (!sessionData) throw new Error(`Session ${targetSessionId} not found`);
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error('File size must be 10MB or less.');
+        }
 
-      const receiverId = sessionData.participant_1_id === effectiveUserId
-        ? sessionData.participant_2_id
-        : sessionData.participant_1_id;
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        attachmentPath = `${targetSessionId}/${effectiveUserId || 'unknown'}-${Date.now()}-${safeFileName}`;
+
+        const { error: uploadError } = await supabase
+          .storage
+          .from('chat-attachments')
+          .upload(attachmentPath, file, {
+            upsert: false,
+            contentType: file.type || 'application/octet-stream',
+          });
+
+        if (uploadError) {
+          throw new Error(uploadError.message || 'Failed to upload attachment.');
+        }
+
+        messageType = file.type?.startsWith('image/') ? 'image' : 'file';
+      }
 
       // Persist to Supabase (no receiver_id column in messages table)
       const { data, error } = await supabase
@@ -210,7 +258,12 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
         .insert({
           session_id: targetSessionId,
           sender_id: effectiveUserId,
-          content,
+          content: trimmedContent,
+          message_type: messageType,
+          attachment_path: attachmentPath,
+          attachment_name: file?.name || null,
+          attachment_mime_type: file?.type || null,
+          attachment_size: file?.size || null,
         })
         .select()
         .maybeSingle();
@@ -218,22 +271,32 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
       if (error) throw error;
       if (!data) throw new Error('Failed to send message');
 
+      const enrichedMessage = await enrichMessageWithAttachmentUrl(data);
+
       // Broadcast via WebSocket for instant delivery
-      sendWsMessage(content, data.id);
+      sendWsMessage({
+        content: trimmedContent || undefined,
+        messageId: data.id,
+        messageType,
+        attachmentName: data.attachment_name,
+        attachmentMimeType: data.attachment_mime_type,
+        attachmentSize: data.attachment_size,
+        attachmentPath: data.attachment_path,
+      });
 
       // Add to local state immediately (sender sees it right away)
       setMessages(prev => {
-        const exists = prev.some(msg => msg.id === data.id);
+        const exists = prev.some(msg => msg.id === enrichedMessage.id);
         if (exists) return prev;
-        return [...prev, data];
+        return [...prev, enrichedMessage];
       });
 
-      return data;
+      return enrichedMessage;
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
     }
-  }, [user?.id, sendWsMessage]);
+  }, [user?.id, effectiveUserId, sendWsMessage, enrichMessageWithAttachmentUrl]);
 
   // Mark messages as read
   const markMessagesAsRead = useCallback(async () => {
@@ -288,14 +351,19 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
           .order('created_at', { ascending: true });
 
         if (!error && data) {
+          const enrichedMessages = await enrichMessagesWithAttachmentUrls(data);
           setMessages(prev => {
             // Only update if there are genuinely new messages
-            if (data.length !== prev.length) {
-              return data;
+            if (enrichedMessages.length !== prev.length) {
+              return enrichedMessages;
             }
             // Check if the last message ID differs (cheap comparison)
-            if (data.length > 0 && prev.length > 0 && data[data.length - 1].id !== prev[prev.length - 1].id) {
-              return data;
+            if (
+              enrichedMessages.length > 0 &&
+              prev.length > 0 &&
+              enrichedMessages[enrichedMessages.length - 1].id !== prev[prev.length - 1].id
+            ) {
+              return enrichedMessages;
             }
             return prev; // No change — skip re-render
           });
@@ -307,7 +375,7 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
 
     const interval = setInterval(pollMessages, 3000);
     return () => clearInterval(interval);
-  }, [sessionId, user?.id]);
+  }, [sessionId, user?.id, enrichMessagesWithAttachmentUrls]);
 
   return {
     sessions,

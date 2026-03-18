@@ -16,7 +16,7 @@ interface PatientProfileProps {
 }
 
 const PatientProfile = ({ open, onOpenChange, trigger }: PatientProfileProps) => {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
   
@@ -96,8 +96,7 @@ const PatientProfile = ({ open, onOpenChange, trigger }: PatientProfileProps) =>
       });
       
       setIsOpen(false);
-      // Refresh the page to update the user context
-      window.location.reload();
+      await refreshProfile();
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast({
