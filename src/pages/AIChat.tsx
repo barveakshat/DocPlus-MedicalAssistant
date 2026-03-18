@@ -28,7 +28,7 @@ const AIChat = () => {
   const handleNewSession = async () => {
     const title = user?.role === 'doctor' 
       ? 'Chat with AI Assistant' 
-      : 'Talk to AI Support';
+      : 'AI Support';
     
     const newSession = await createSession(sessionType, title);
     if (newSession) {

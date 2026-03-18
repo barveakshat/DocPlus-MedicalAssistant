@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ChatAPI } from '@/integrations/supabase/chat-api';
 import { useToast } from '@/hooks/use-toast';
 import { HuggingFaceService } from '@/services/huggingFaceService';
+import { useVoiceChat } from '@/hooks/useVoiceChat';
 import type { Database } from '@/integrations/supabase/types';
 import { usePatientContext } from '@/contexts/PatientContext';
 
@@ -38,11 +39,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, onSessionUpdate, onNew
 
   // @ mention state - only for doctors in ai-doctor sessions
   const isDoctorAIChat = user?.role === 'doctor' && session?.session_type === 'ai-doctor';
+  const isPatientAIChat = user?.role === 'patient' && session?.session_type === 'ai-patient';
   const [showPatientList, setShowPatientList] = useState(false);
   const [patientSearch, setPatientSearch] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
   const { selectedPatient, setSelectedPatient } = usePatientContext();
   const [cursorPosition, setCursorPosition] = useState(0);
+
+  // Voice chat - only for patients in AI sessions
+  const { isListening, transcript, startListening, stopListening } = useVoiceChat();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,10 +133,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, onSessionUpdate, onNew
     if (!isDoctorAIChat) return;
     
     try {
+      // First, find the doctor record to get the correct user_id for assigned_doctor_id
+      const { data: doctor } = await supabase
+        .from('doctors')
+        .select('user_id')
+        .eq('user_id', user?.id || '')
+        .maybeSingle();
+
+      const doctorUserId = doctor?.user_id || user?.auth_user_id || user?.id;
+
       let query = supabase.from('patients').select('*');
       
-      if (user?.id) {
-        query = query.eq('assigned_doctor_id', user.id);
+      if (doctorUserId) {
+        query = query.eq('assigned_doctor_id', doctorUserId);
       }
       
       if (searchTerm) {
@@ -227,16 +241,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, onSessionUpdate, onNew
   // Real-time subscription is now handled by the useMessages hook
   // No need for additional subscription here as it's already implemented in the hook
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !session) return;
+  const handleSendMessage = async (overrideText?: string | any) => {
+    const textToSend = typeof overrideText === 'string' ? overrideText : newMessage;
+    if (!textToSend.trim() || !session) return;
 
     if (!user?.id) {
       setError('You must be logged in to send messages.');
       return;
     }
 
-    const messageContent = newMessage;
-    setNewMessage('');
+    const messageContent = textToSend;
+    if (typeof overrideText !== 'string') {
+      setNewMessage('');
+    }
     setIsLoading(true);
     setError(null);
 
@@ -255,8 +272,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, onSessionUpdate, onNew
         return;
       }
 
-      // If this is the *first* message in the session, automatically name the session
-      if (messages.length === 0 && onRenameSession) {
+      // Dynamically name sessions based on first user message content
+      const genericTitles = ['chat with ai assistant', 'talk to ai support', 'new ai-doctor session', 'new ai-patient session'];
+      const hasGenericTitle = session.title && genericTitles.includes(session.title.toLowerCase());
+      if ((messages.length === 0 || hasGenericTitle) && onRenameSession) {
         let suggestedTitle = messageContent.substring(0, 30);
         if (messageContent.length > 30) {
           suggestedTitle += '...';
@@ -528,15 +547,40 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, onSessionUpdate, onNew
       <div className="px-6 py-6 bg-white relative shrink-0">
         <div className="max-w-4xl mx-auto flex flex-col items-center">
           
+          {/* @ Mention Patient Dropdown - only for doctors */}
+          {isDoctorAIChat && showPatientList && patients.length > 0 && (
+            <div className="absolute bottom-full left-6 right-6 mb-2 z-50">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  <div className="px-3 py-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                    Select a patient
+                  </div>
+                  {patients.map((patient) => (
+                    <button
+                      key={patient.id}
+                      onClick={() => handlePatientSelect(patient)}
+                      className="w-full text-left px-4 py-3 hover:bg-[#5442f5]/5 transition-colors flex items-center space-x-3 border-b border-slate-50 last:border-b-0"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[#5442f5]/10 text-[#5442f5] flex items-center justify-center text-xs font-bold">
+                        {patient.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-slate-800">{patient.name}</span>
+                        <span className="text-xs text-slate-400">{patient.email || 'No email'}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="w-full flex items-center bg-slate-50 border border-slate-100 rounded-2xl shadow-sm p-2 transition-all focus-within:ring-2 focus-within:ring-[#5442f5]/20 focus-within:border-[#5442f5]/30">
-            <button className="p-3 text-slate-400 hover:text-slate-600 transition-colors">
-              <Paperclip className="h-5 w-5" />
-            </button>
             <Input
               ref={inputRef}
-              value={newMessage}
+              value={isListening && transcript ? transcript : newMessage}
               onChange={handleInputChange}
-              placeholder={isDoctorAIChat ? "Ask the AI assistant about symptoms, labs, or literature..." : "Type your message..."}
+              placeholder={isDoctorAIChat ? "Type @ to select a patient, then ask about symptoms, labs, or literature..." : (isListening ? "Listening..." : "Type your message...")}
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && (!isDoctorAIChat || !showPatientList)) {
                   handleSendMessage();
@@ -544,13 +588,52 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, onSessionUpdate, onNew
                   setShowPatientList(false);
                 }
               }}
-              disabled={isLoading}
-              className="flex-1 bg-transparent border-none px-2 py-3 focus-visible:ring-0 focus-visible:ring-offset-0 text-slate-700 shadow-none text-base placeholder:text-slate-400"
+              disabled={isLoading || isListening}
+              className={`flex-1 bg-transparent border-none px-2 py-3 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none text-base placeholder:text-slate-400 ${
+                isListening ? 'text-[#5442f5] font-medium' : 'text-slate-700'
+              }`}
             />
             <div className="flex items-center space-x-1 pr-1">
-              <button className="p-3 text-slate-400 hover:text-slate-600 transition-colors">
-                <Mic className="h-5 w-5" />
-              </button>
+              {/* Voice input mic button - patient AI chat only */}
+              {isPatientAIChat && (
+                <button
+                  onClick={() => {
+                    if (isListening) {
+                      if (transcript.trim()) {
+                        handleSendMessage(transcript);
+                      } else {
+                        toast({
+                          title: "No speech detected",
+                          description: "Your browser's microphone didn't capture any audio. Please check your mic settings.",
+                        });
+                      }
+                      stopListening();
+                    } else {
+                      startListening(
+                        (text) => {
+                          handleSendMessage(text); // Auto-send on natural pause
+                        },
+                        () => {
+                          // Ended without result (e.g. timeout on silence)
+                          toast({
+                            title: "Microphone timeout",
+                            description: "Listening stopped because no audio was detected by your browser.",
+                          });
+                        }
+                      );
+                    }
+                  }}
+                  disabled={isLoading && !isListening}
+                  className={`p-3 transition-colors rounded-lg flex items-center justify-center ${
+                    isListening
+                      ? 'text-red-500 bg-red-50 animate-pulse'
+                      : 'text-slate-400 hover:text-[#5442f5] hover:bg-[#5442f5]/5'
+                  }`}
+                  title={isListening ? 'Stop listening' : 'Start voice input'}
+                >
+                  <Mic className="h-5 w-5" />
+                </button>
+              )}
               <Button
                 onClick={handleSendMessage}
                 disabled={isLoading || !newMessage.trim()}
