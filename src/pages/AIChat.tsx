@@ -59,19 +59,17 @@ const AIChat = () => {
         onNewSession={handleNewSession}
         onRenameSession={renameSession}
       />
-      {user?.role === 'patient' && (
-        <div className="w-80 shrink-0 border-l border-slate-200">
-          <ConversationList
-            sessions={sessions}
-            selectedSessionId={selectedSessionId}
-            onSessionSelect={handleSessionSelect}
-            onNewSession={handleNewSession}
-            onDeleteSession={handleDeleteSession}
-            onRenameSession={renameSession}
-            loading={loading}
-          />
-        </div>
-      )}
+      <div className="w-80 shrink-0 border-l border-slate-200">
+        <ConversationList
+          sessions={sessions}
+          selectedSessionId={selectedSessionId}
+          onSessionSelect={handleSessionSelect}
+          onNewSession={handleNewSession}
+          onDeleteSession={handleDeleteSession}
+          onRenameSession={renameSession}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 };

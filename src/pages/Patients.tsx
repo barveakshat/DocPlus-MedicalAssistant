@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search } from 'lucide-react';
+import { Search, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -196,10 +196,11 @@ const Patients = () => {
                         </td>
                         <td className="px-8 py-5 text-right">
                           <button
-                            onClick={() => navigate(`/patient/${patient.id}`)}
-                            className="text-[#5442f5] font-bold text-[13px] hover:text-[#4335c0] transition-colors"
+                            onClick={() => navigate(`/doctor-chat`, { state: { patientId: patient.user_id, patientName: patient.name } })}
+                            className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-[#5442f5]/10 text-[#5442f5] hover:bg-[#5442f5]/20 transition-colors"
+                            title={`Chat with ${patient.name}`}
                           >
-                            Edit
+                            <MessageCircle className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>

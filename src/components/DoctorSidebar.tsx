@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocation, NavLink } from 'react-router-dom';
+import { useLocation, NavLink, useNavigate } from 'react-router-dom';
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +26,7 @@ const DoctorSidebar = () => {
   const { user, logout } = useAuth();
   const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const collapsed = state === 'collapsed';
 
   const doctorItems = [
@@ -85,15 +86,22 @@ const DoctorSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* New Consultation Button Bottom */}
+        {/* New AI Chat Button Bottom */}
         <div className="mt-auto p-4 border-t border-slate-100">
           {!collapsed ? (
-            <Button className="w-full bg-[#5442f5] hover:bg-[#4335c0] text-white rounded-xl py-6 font-semibold shadow-sm">
+            <Button 
+              onClick={() => navigate('/ai-chat')}
+              className="w-full bg-[#5442f5] hover:bg-[#4335c0] text-white rounded-xl py-6 font-semibold shadow-sm"
+            >
               <Plus className="h-5 w-5 mr-2" />
-              New Consultation
+              New AI Chat
             </Button>
           ) : (
-            <Button size="icon" className="w-full bg-[#5442f5] hover:bg-[#4335c0] text-white rounded-xl h-12">
+            <Button 
+              size="icon" 
+              onClick={() => navigate('/ai-chat')}
+              className="w-full bg-[#5442f5] hover:bg-[#4335c0] text-white rounded-xl h-12"
+            >
               <Plus className="h-5 w-5" />
             </Button>
           )}

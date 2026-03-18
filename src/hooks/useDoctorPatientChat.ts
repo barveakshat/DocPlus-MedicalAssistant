@@ -15,7 +15,8 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
   const [loading, setLoading] = useState(false);
 
   // WebSocket for real-time message delivery
-  const { sendWsMessage, isConnected, onMessage } = useWebSocket(sessionId, user?.id || null);
+  const effectiveUserId = user?.auth_user_id || user?.id || null;
+  const { sendWsMessage, isConnected, onMessage } = useWebSocket(sessionId, effectiveUserId);
 
   // Handle incoming WebSocket messages
   useEffect(() => {
@@ -53,7 +54,7 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
         .from('chat_sessions')
         .select('*')
         .eq('session_type', 'doctor-patient')
-        .or(`participant_1_id.eq.${user.auth_user_id || user.id},participant_2_id.eq.${user.auth_user_id || user.id}`)
+        .or(`participant_1_id.eq.${effectiveUserId},participant_2_id.eq.${effectiveUserId}`)
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
       if (error) {
@@ -140,12 +141,27 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
     }
   }, []);
 
-  // Create a new session
+  // Create a new session (checks for existing first to prevent duplicates)
   const createSession = useCallback(async (doctorId: string, patientId: string, title?: string) => {
     if (!user?.id) return null;
 
     try {
       setLoading(true);
+
+      // Check for existing session first
+      const { data: existing } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .eq('session_type', 'doctor-patient')
+        .or(`and(participant_1_id.eq.${doctorId},participant_2_id.eq.${patientId}),and(participant_1_id.eq.${patientId},participant_2_id.eq.${doctorId})`)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        await fetchSessions();
+        return existing[0] as DoctorPatientChatSession;
+      }
+
+      // No existing session — create a new one
       const { data, error } = await supabase
         .from('chat_sessions')
         .insert({
@@ -184,17 +200,16 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
 
       if (!sessionData) throw new Error(`Session ${targetSessionId} not found`);
 
-      const receiverId = sessionData.participant_1_id === user.id
+      const receiverId = sessionData.participant_1_id === effectiveUserId
         ? sessionData.participant_2_id
         : sessionData.participant_1_id;
 
-      // Persist to Supabase
+      // Persist to Supabase (no receiver_id column in messages table)
       const { data, error } = await supabase
         .from('messages')
         .insert({
           session_id: targetSessionId,
-          sender_id: user.id,
-          receiver_id: receiverId,
+          sender_id: effectiveUserId,
           content,
         })
         .select()
@@ -229,14 +244,14 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
         .from('messages')
         .update({ is_read: true })
         .eq('session_id', sessionId)
-        .neq('sender_id', user.id)
+        .neq('sender_id', effectiveUserId!)
         .eq('is_read', false);
 
       if (error) throw error;
 
       setMessages(prev =>
         prev.map(msg =>
-          msg.sender_id !== user.id && !msg.is_read
+          msg.sender_id !== effectiveUserId && !msg.is_read
             ? { ...msg, is_read: true }
             : msg
         )
@@ -259,6 +274,40 @@ export const useDoctorPatientChat = (sessionId: string | null) => {
       setMessages([]);
     }
   }, [sessionId, user?.id, fetchMessages]);
+
+  // Polling fallback: fetch new messages every 3s in case WebSocket relay misses them
+  useEffect(() => {
+    if (!sessionId || !user?.id) return;
+
+    const pollMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: true });
+
+        if (!error && data) {
+          setMessages(prev => {
+            // Only update if there are genuinely new messages
+            if (data.length !== prev.length) {
+              return data;
+            }
+            // Check if the last message ID differs (cheap comparison)
+            if (data.length > 0 && prev.length > 0 && data[data.length - 1].id !== prev[prev.length - 1].id) {
+              return data;
+            }
+            return prev; // No change — skip re-render
+          });
+        }
+      } catch {
+        // Silently fail — next poll will retry
+      }
+    };
+
+    const interval = setInterval(pollMessages, 3000);
+    return () => clearInterval(interval);
+  }, [sessionId, user?.id]);
 
   return {
     sessions,

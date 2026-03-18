@@ -57,6 +57,7 @@ const PatientDoctorChat = () => {
     sessions: doctorPatientSessions,
     createSession: createDoctorPatientSession,
     markMessagesAsRead: markDoctorPatientMessagesAsRead,
+    fetchSessions: refreshDoctorPatientSessions,
   } = useDoctorPatientChat(currentSession?.id || null);
 
   // Load assigned doctor information
@@ -268,10 +269,9 @@ const PatientDoctorChat = () => {
   };
 
   const handleSessionUpdate = () => {
-    // Refresh sessions when new messages are sent
-    if (doctorInfo?.user_id) {
-      loadOrCreateChatSession(doctorInfo.user_id);
-    }
+    // Just refresh the session list metadata (e.g. last_message_at).
+    // Do NOT re-create sessions here — messages are already in local state.
+    refreshDoctorPatientSessions();
   };
 
   if (loading) {

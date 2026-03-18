@@ -71,6 +71,7 @@ const DoctorPatientChatWindow: React.FC<DoctorPatientChatWindowProps> = ({
   const sendMessage = async () => {
     if (!newMessage.trim() || !user?.id) return;
 
+    const effectiveUserId = user.auth_user_id || user.id;
     setError(null);
 
     try {
@@ -89,12 +90,12 @@ const DoctorPatientChatWindow: React.FC<DoctorPatientChatWindowProps> = ({
         let patientId: string;
 
         if (user?.role === 'doctor') {
-          doctorId = user.id;
+          doctorId = effectiveUserId;
           // For now, we'll assume the other participant is a patient
           // In a real app, you'd get this from the session or route params
           patientId = session?.participant_2_id || session?.participant_1_id || '';
         } else {
-          patientId = user.id;
+          patientId = effectiveUserId;
           // For now, we'll assume the other participant is a doctor
           doctorId = session?.participant_1_id || session?.participant_2_id || '';
         }
@@ -120,7 +121,7 @@ const DoctorPatientChatWindow: React.FC<DoctorPatientChatWindowProps> = ({
       console.log('Sending doctor-patient message:', {
         sessionId: sessionIdToSend,
         content: newMessage.trim(),
-        senderId: user.id
+        senderId: effectiveUserId
       });
 
       // Use the hook's sendMessage function, passing the correct session ID
