@@ -1,12 +1,12 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useLocation, NavLink, useNavigate } from 'react-router-dom';
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -23,53 +23,101 @@ import {
   CalendarCheck,
   Pill,
   Activity,
+  ChevronRight,
+  Settings,
+  HelpCircle,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const DoctorSidebar = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const { state } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const collapsed = state === 'collapsed';
 
   const doctorItems = [
-    { title: 'Dashboard', url: '/dashboard/doctor', icon: LayoutDashboard },
-    { title: 'AI Assistant', url: '/ai-chat', icon: MessageCircle },
-    { title: 'Patients', url: '/patients', icon: Users },
-    { title: 'Appointments', url: '/appointments', icon: CalendarCheck },
-    { title: 'Prescriptions', url: '/prescriptions', icon: Pill },
-    { title: 'Disease Programs', url: '/disease-programs', icon: Activity },
-    { title: 'Clinical Modules', url: '/clinical-modules', icon: ActivitySquare },
+    { title: t('nav_dashboard'), url: '/dashboard/doctor', icon: LayoutDashboard },
+    { title: t('nav_ai_assistant'), url: '/ai-chat', icon: MessageCircle },
+    { title: t('nav_patients'), url: '/patients', icon: Users },
+    { title: t('nav_appointments'), url: '/appointments', icon: CalendarCheck },
+    { title: t('nav_prescriptions'), url: '/prescriptions', icon: Pill },
+    { title: t('nav_disease_programs'), url: '/disease-programs', icon: Activity },
+    { title: t('nav_clinical_modules'), url: '/clinical-modules', icon: ActivitySquare },
   ];
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
-      <SidebarContent className="flex flex-col h-full bg-white">
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-[#1b2f4a]"
+      style={{ backgroundColor: '#0d1e35' }}
+    >
+      <SidebarContent
+        className="flex flex-col h-full"
+        style={{ backgroundColor: '#0d1e35' }}
+      >
         {/* App Header */}
-        <div className="h-20 px-6 flex items-center justify-between shrink-0 relative">
-          <div className="flex items-center space-x-3">
-            <div className="bg-[#5442f5] p-2 rounded-xl text-white">
-              <BriefcaseMedical className="h-6 w-6" />
-            </div>
-            {!collapsed && (
+        <div
+          className={`shrink-0 relative flex items-center ${collapsed ? 'h-14 px-2 justify-center' : 'h-20 px-5 justify-between'}`}
+          style={{
+            background: 'linear-gradient(135deg, #112540 0%, #0d1e35 100%)',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
+          }}
+        >
+          {!collapsed ? (
+            <div className="flex items-center space-x-3">
+              <div
+                className="p-2 rounded-xl shrink-0"
+                style={{ background: 'linear-gradient(135deg, #1868b7 0%, #0891b2 100%)' }}
+              >
+                <BriefcaseMedical className="h-6 w-6 text-white" />
+              </div>
               <div className="flex flex-col">
-                <h2 className="text-xl font-bold text-slate-900 leading-tight">
+                <h2 className="text-[18px] font-bold text-white leading-tight tracking-tight">
                   DocPlus
                 </h2>
-                <span className="text-xs text-slate-500 font-medium tracking-wide">
-                  Medical Portal
+                <span className="text-[11px] font-medium tracking-wide" style={{ color: '#7cafd4' }}>
+                  {t('medical_portal')}
                 </span>
               </div>
-            )}
-          </div>
-          <SidebarTrigger className="text-slate-400 absolute right-4" />
+            </div>
+          ) : null}
+          <SidebarTrigger
+            className={`text-white/40 hover:text-white/80 transition-colors ${collapsed ? '' : 'absolute right-3'}`}
+          />
         </div>
 
+        {/* User Info — compact when collapsed */}
+        {!collapsed && (
+          <div
+            className="px-5 py-4 shrink-0"
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div className="flex items-center space-x-3">
+              <div
+                className="h-9 w-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                style={{ background: 'linear-gradient(135deg, #1868b7 0%, #0891b2 100%)' }}
+              >
+                {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'DR'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-white leading-tight truncate">
+                  Dr. {user?.name || 'Doctor'}
+                </p>
+                <p className="text-[11px] font-medium" style={{ color: '#7cafd4' }}>
+                  {t('medical_professional')}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
-        <SidebarGroup>
+        <SidebarGroup className="flex-1 pt-3">
           <SidebarGroupContent>
-            <SidebarMenu className="px-3 gap-2">
+            <SidebarMenu className={collapsed ? 'px-1 gap-2' : 'px-3 gap-1'}>
               {doctorItems.map((item) => {
                 const isActive = location.pathname.includes(item.url);
                 return (
@@ -77,14 +125,54 @@ const DoctorSidebar = () => {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
-                        className={`flex items-center space-x-3 p-3 rounded-xl transition-all font-semibold text-sm ${
+                        className={`flex items-center rounded-xl transition-all font-medium text-[13px] group relative ${collapsed ? 'justify-center px-0 py-2.5' : 'space-x-3 px-3 py-2.5'} ${
                           isActive
-                            ? 'bg-[#5442f5]/10 text-[#5442f5]'
-                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                            ? 'text-white'
+                            : 'hover:text-white'
                         }`}
+                        style={
+                          isActive
+                            ? {
+                                background: 'rgba(56, 170, 219, 0.18)',
+                                color: '#7dd3f5',
+                              }
+                            : {}
+                        }
+                        onMouseEnter={(e) => {
+                          if (!isActive) {
+                            (e.currentTarget as HTMLElement).style.background =
+                              'rgba(255,255,255,0.06)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            (e.currentTarget as HTMLElement).style.background = '';
+                          }
+                        }}
                       >
-                        <item.icon className={`h-5 w-5 ${isActive ? 'text-[#5442f5]' : 'text-slate-400'}`} />
-                        {!collapsed && <span>{item.title}</span>}
+                        <item.icon
+                          className={`h-[18px] w-[18px] shrink-0 ${
+                            isActive ? 'text-[#7dd3f5]' : 'text-white/40'
+                          }`}
+                        />
+                        {!collapsed && (
+                          <>
+                            <span
+                              className={isActive ? 'text-[#7dd3f5]' : 'text-white/60'}
+                            >
+                              {item.title}
+                            </span>
+                            {isActive && (
+                              <ChevronRight className="h-3.5 w-3.5 ml-auto text-[#7dd3f5]" />
+                            )}
+                          </>
+                        )}
+                        {!collapsed && isActive && (
+                          <div
+                            className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-l"
+                            style={{ background: '#3baadb' }}
+                          />
+                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -94,23 +182,65 @@ const DoctorSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* New AI Chat Button Bottom */}
-        <div className="mt-auto p-4 border-t border-slate-100">
+        {/* Bottom Links: Settings + Help */}
+        <div
+          className={`shrink-0 ${collapsed ? 'px-1 py-2 gap-2' : 'px-3 pb-2 gap-1'} flex flex-col`}
+          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          {[
+            { title: t('nav_settings'), url: '/settings', icon: Settings },
+            { title: t('nav_help'), url: '/help', icon: HelpCircle },
+          ].map((item) => {
+            const isActive = location.pathname === item.url;
+            return (
+              <NavLink
+                key={item.title}
+                to={item.url}
+                className={`flex items-center rounded-xl transition-all font-medium text-[13px] relative ${collapsed ? 'justify-center px-0 py-2' : 'space-x-3 px-3 py-2'}`}
+                style={isActive ? { background: 'rgba(56,170,219,0.18)', color: '#7dd3f5' } : {}}
+                onMouseEnter={(e) => {
+                  if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) (e.currentTarget as HTMLElement).style.background = '';
+                }}
+              >
+                <item.icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? 'text-[#7dd3f5]' : 'text-white/40'}`} />
+                {!collapsed && <span className={isActive ? 'text-[#7dd3f5]' : 'text-white/60'}>{item.title}</span>}
+              </NavLink>
+            );
+          })}
+          {/* Logout */}
+          <button
+            onClick={logout}
+            className={`flex items-center rounded-xl transition-all font-medium text-[13px] text-red-400 hover:text-red-300 hover:bg-red-500/10 mt-1 ${collapsed ? 'justify-center px-0 py-2' : 'space-x-3 px-3 py-2'}`}
+          >
+            <LogOut className="h-[18px] w-[18px] shrink-0" />
+            {!collapsed && <span>{t('nav_logout')}</span>}
+          </button>
+        </div>
+
+        {/* New AI Chat Button */}
+        <div
+          className={`shrink-0 ${collapsed ? 'p-2' : 'px-4 pb-4'}`}
+        >
           {!collapsed ? (
-            <Button 
+            <Button
               onClick={() => navigate('/ai-chat')}
-              className="w-full bg-[#5442f5] hover:bg-[#4335c0] text-white rounded-xl py-6 font-semibold shadow-sm"
+              className="w-full text-white rounded-xl py-5 font-semibold shadow-sm text-[13px] border-0"
+              style={{ background: 'linear-gradient(135deg, #1868b7 0%, #0891b2 100%)' }}
             >
-              <Plus className="h-5 w-5 mr-2" />
-              New AI Chat
+              <Plus className="h-4 w-4 mr-2" />
+              {t('new_ai_chat')}
             </Button>
           ) : (
-            <Button 
-              size="icon" 
+            <Button
+              size="icon"
               onClick={() => navigate('/ai-chat')}
-              className="w-full bg-[#5442f5] hover:bg-[#4335c0] text-white rounded-xl h-12"
+              className="w-full text-white rounded-xl h-11 border-0"
+              style={{ background: 'linear-gradient(135deg, #1868b7 0%, #0891b2 100%)' }}
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4" />
             </Button>
           )}
         </div>

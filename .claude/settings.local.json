@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.tsx?$\")",
+      "Bash(find c:/Projects/DocPlus-MedicalAssistant -type f -name *.png -o -type f -name *.jpg -o -type f -name *.jpeg)"
+    ]
+  }
+}

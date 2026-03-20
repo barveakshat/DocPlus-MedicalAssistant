@@ -2,114 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Doc+ Medical Design System - Professional medical interface colors and gradients */
+/* Doc+ Medical Design System — Professional Medical Interface */
 
 @layer base {
   :root {
-    /* Modern Medical Base - Clean slate-50 and slate-900 */
-    --background: 210 40% 98%; /* Slate-50: #f8fafc */
-    --foreground: 222 47% 11%; /* Slate-900: #0f172a */
+    /* Medical Blue-Tinted Background */
+    --background: 210 55% 97%; /* #f0f6fc — soft medical blue-white */
+    --foreground: 220 40% 13%; /* #172032 — deep navy text */
 
-    /* Card colors - Crisp white with subtle elevation */
-    --card: 0 0% 100%; /* Pure white */
-    --card-foreground: 222 47% 11%; /* Slate-900 */
+    /* Card — pure white with blue undertone */
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 13%;
 
-    /* Popover colors */
-    --popover: 0 0% 100%; /* Pure white */
-    --popover-foreground: 222 47% 11%; /* Slate-900 */
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 13%;
 
-    /* Medical primary - #5343e5 */
-    --primary: 246 75% 58%; /* #5343e5 */
-    --primary-foreground: 0 0% 100%; /* Pure white */
-    --primary-hover: 246 75% 53%; /* Darker primary */
+    /* Medical Primary — professional teal-blue #1868b7 */
+    --primary: 210 78% 40%;      /* #1868b7 */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 210 78% 34%; /* #13589c darker */
 
-    /* Medical secondary */
-    --secondary: 214 32% 91%; /* Slate-200 */
-    --secondary-foreground: 222 47% 11%; /* Slate-900 */
-    --secondary-hover: 214 32% 86%; 
+    /* Secondary */
+    --secondary: 210 30% 92%;    /* #dceaf6 light blue */
+    --secondary-foreground: 220 40% 18%;
+    --secondary-hover: 210 30% 86%;
 
-    /* Muted colors - Soft neutral grays */
-    --muted: 210 40% 96%; /* Slate-100 */
-    --muted-foreground: 215 16% 47%; /* Slate-500 */
+    /* Muted */
+    --muted: 210 40% 95%;        /* #eaf2fb */
+    --muted-foreground: 215 18% 48%;
 
-    /* Accent - Light primary */
-    --accent: 246 75% 96%; /* Very light primary */
-    --accent-foreground: 246 75% 58%; /* Primary */
+    /* Accent — light medical blue */
+    --accent: 205 70% 94%;       /* #ddf0fa */
+    --accent-foreground: 210 78% 38%;
 
-    /* Destructive - Modern coral red */
-    --destructive: 0 84% 60%; /* Red-500 */
-    --destructive-foreground: 0 0% 100%; /* Pure white */
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Borders and inputs - Subtle grays */
-    --border: 214 32% 91%; /* Slate-200 */
-    --input: 214 32% 91%; /* Slate-200 */
-    --ring: 246 75% 58%; /* Primary ring */
+    /* Borders & Inputs */
+    --border: 210 30% 88%;       /* #ccdff0 blue-tinted border */
+    --input: 210 30% 88%;
+    --ring: 210 78% 40%;
 
-    /* Border radius - Modern rounded */
-    --radius: 0.5rem; /* Clean modern radius */
+    --radius: 0.5rem;
 
-    /* Modern medical gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(194 74% 56%), hsl(168 76% 42%));
-    --gradient-secondary: linear-gradient(135deg, hsl(168 76% 42%), hsl(194 74% 56%));
-    --gradient-hero: linear-gradient(135deg, hsl(194 74% 56%) 0%, hsl(168 76% 42%) 50%, hsl(194 74% 66%) 100%);
+    /* Medical Gradients — blue to teal */
+    --gradient-primary: linear-gradient(135deg, #1868b7 0%, #0891b2 100%);
+    --gradient-secondary: linear-gradient(135deg, #0891b2 0%, #1868b7 100%);
+    --gradient-hero: linear-gradient(135deg, #1868b7 0%, #0891b2 50%, #1868b7 100%);
 
-    /* Sidebar colors - Clean medical theme */
-    --sidebar-background: 0 0% 100%; /* Pure white */
-    --sidebar-foreground: 222 47% 11%; /* Slate-900 */
-    --sidebar-primary: 246 75% 58%; /* Primary */
-    --sidebar-primary-foreground: 0 0% 100%; /* Pure white */
-    --sidebar-accent: 210 40% 96%; /* Slate-100 */
-    --sidebar-accent-foreground: 222 47% 11%; /* Slate-900 */
-    --sidebar-border: 214 32% 91%; /* Slate-200 */
-    --sidebar-ring: 246 75% 58%; /* Primary ring */
+    /* Sidebar — Dark Navy (industry standard medical UI) */
+    --sidebar-background: 220 48% 11%; /* #0d1e35 deep navy */
+    --sidebar-foreground: 210 35% 82%; /* #c4d8ee light blue-gray */
+    --sidebar-primary: 205 80% 62%;    /* #3baadb active highlight blue */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 40% 18%;     /* #1e3252 hover state */
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 220 38% 17%;     /* #1b2f4a */
+    --sidebar-ring: 205 80% 55%;
 
-    /* Status colors - Modern medical palette */
-    --success: 168 76% 42%; /* Mint green */
-    --success-foreground: 0 0% 100%; /* Pure white */
-    --warning: 38 92% 50%; /* Modern amber */
-    --warning-foreground: 0 0% 100%; /* Pure white */
-    --info: 199 89% 48%; /* Sky blue */
-    --info-foreground: 0 0% 100%; /* Pure white */
+    /* Status colors */
+    --success: 160 70% 38%;      /* #1ea878 medical green */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
   }
 
   .dark {
-    /* Modern dark medical theme */
-    --background: 215 32% 6%; /* Very dark blue-gray */
-    --foreground: 0 0% 98%; /* Pure white */
+    --background: 220 45% 8%;
+    --foreground: 0 0% 98%;
+    --card: 220 42% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 220 42% 11%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 205 80% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 30% 18%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 220 35% 14%;
+    --muted-foreground: 215 18% 65%;
+    --accent: 220 35% 14%;
+    --accent-foreground: 205 80% 60%;
+    --destructive: 351 95% 71%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 35% 18%;
+    --input: 220 35% 18%;
+    --ring: 205 80% 58%;
 
-    --card: 215 32% 8%; /* Dark blue-gray card */
-    --card-foreground: 0 0% 98%; /* Pure white */
-
-    --popover: 215 32% 8%; /* Dark blue-gray */
-    --popover-foreground: 0 0% 98%; /* Pure white */
-
-    --primary: 194 74% 56%; /* Modern teal */
-    --primary-foreground: 0 0% 100%; /* Pure white */
-
-    --secondary: 168 76% 42%; /* Mint green */
-    --secondary-foreground: 0 0% 100%; /* Pure white */
-
-    --muted: 215 32% 12%; /* Dark muted */
-    --muted-foreground: 215 16% 65%; /* Light gray */
-
-    --accent: 215 32% 12%; /* Dark accent */
-    --accent-foreground: 194 74% 56%; /* Teal accent */
-
-    --destructive: 351 95% 71%; /* Coral red */
-    --destructive-foreground: 0 0% 100%; /* Pure white */
-
-    --border: 215 32% 15%; /* Dark border */
-    --input: 215 32% 15%; /* Dark input */
-    --ring: 194 74% 56%; /* Teal ring */
-
-    --sidebar-background: 215 32% 4%; /* Very dark sidebar */
-    --sidebar-foreground: 0 0% 98%; /* Pure white */
-    --sidebar-primary: 194 74% 56%; /* Modern teal */
-    --sidebar-primary-foreground: 0 0% 100%; /* Pure white */
-    --sidebar-accent: 215 32% 12%; /* Dark accent */
-    --sidebar-accent-foreground: 194 74% 56%; /* Teal accent */
-    --sidebar-border: 215 32% 15%; /* Dark border */
-    --sidebar-ring: 194 74% 56%; /* Teal ring */
+    --sidebar-background: 220 48% 6%;
+    --sidebar-foreground: 210 35% 82%;
+    --sidebar-primary: 205 80% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 40% 14%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 220 38% 13%;
+    --sidebar-ring: 205 80% 55%;
   }
 }
 
@@ -120,5 +109,29 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Medical UI Utilities */
+@layer utilities {
+  .medical-gradient {
+    background: linear-gradient(135deg, #1868b7 0%, #0891b2 100%);
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  .page-bg {
+    background-color: #eef5fc;
+  }
+
+  .sidebar-item-active {
+    background: rgba(56, 170, 219, 0.18);
+    color: #7dd3f5;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold;
   }
 }

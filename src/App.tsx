@@ -16,6 +16,8 @@ import PatientMyRecords from "./pages/PatientMyRecords";
 import Appointments from "./pages/Appointments";
 import Prescriptions from "./pages/Prescriptions";
 import DiseasePrograms from "./pages/DiseasePrograms";
+import Settings from "./pages/Settings";
+import HelpSupport from "./pages/HelpSupport";
 
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -164,6 +166,16 @@ const AuthenticatedRoutes: React.FC = () => {
         </>
       )}
 
+      {/* Shared routes — available to all authenticated users */}
+      <Route
+        path="/settings"
+        element={<DashboardLayout><Settings /></DashboardLayout>}
+      />
+      <Route
+        path="/help"
+        element={<DashboardLayout><HelpSupport /></DashboardLayout>}
+      />
+
       {/* Onboarding routes (accessible for re-visits) */}
       <Route path="/onboarding/select-role" element={<RoleSelectionPage />} />
       <Route path="/onboarding/doctor" element={<DoctorOnboarding />} />
@@ -259,9 +271,15 @@ const AppContent: React.FC = () => {
 };
 
 import { PatientProvider } from "./contexts/PatientContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
+import { initAppSettings } from "./pages/Settings";
+
+// Apply saved theme/font-size before first render
+initAppSettings();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <LanguageProvider>
     <AuthProvider>
       <PatientProvider>
         <TooltipProvider>
@@ -273,6 +291,7 @@ const App = () => (
         </TooltipProvider>
       </PatientProvider>
     </AuthProvider>
+    </LanguageProvider>
   </QueryClientProvider>
 );
 

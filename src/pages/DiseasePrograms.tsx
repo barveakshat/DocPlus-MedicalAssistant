@@ -12,7 +12,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Activity, Plus, Loader2, Heart, Droplets } from 'lucide-react';
+import { Activity, Plus, Loader2, Heart, Droplets, ClipboardList } from 'lucide-react';
 
 interface TargetMetric {
   metric_type: string;
@@ -189,31 +189,56 @@ const DiseasePrograms: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-[#fafafa] p-6 md:p-8">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="flex-1 h-full overflow-y-auto" style={{ background: '#eef5fc' }}>
+
+      {/* Page Header Banner */}
+      <div
+        className="relative overflow-hidden px-8 py-6 shrink-0"
+        style={{ background: 'linear-gradient(135deg, #1868b7 0%, #0891b2 100%)' }}
+      >
+        <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full opacity-10 bg-white" />
+        <div className="absolute top-3 right-28 w-20 h-20 rounded-full opacity-10 bg-white" />
+        <div className="flex items-center justify-between relative z-10">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Disease Programs</h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Activity className="h-4 w-4 text-white/70" />
+              <span className="text-white/70 text-sm font-medium">Health Monitoring</span>
+            </div>
+            <h1 className="text-[24px] font-bold text-white tracking-tight mb-1">Disease Programs</h1>
+            <p className="text-white/70 text-[14px] font-medium">
               {user?.role === 'doctor'
                 ? 'Enroll patients in structured chronic disease monitoring programs.'
                 : 'Track your vitals and view your monitoring programs.'}
             </p>
           </div>
-          {user?.role === 'doctor' && (
-            <Button onClick={() => setShowCreateDialog(true)} className="bg-[#5442f5] hover:bg-[#4335c0] text-white">
-              <Plus className="h-4 w-4 mr-2" /> Enroll Patient
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-[13px] font-bold bg-white/20 text-white border border-white/30">
+              <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+              {programs.length} program{programs.length !== 1 ? 's' : ''}
+            </span>
+            {user?.role === 'doctor' && (
+              <Button
+                onClick={() => setShowCreateDialog(true)}
+                className="text-white border-0 font-semibold shadow-sm"
+                style={{ background: 'rgba(255,255,255,0.20)', border: '1px solid rgba(255,255,255,0.35)' }}
+              >
+                <Plus className="h-4 w-4 mr-2" /> Enroll Patient
+              </Button>
+            )}
+          </div>
         </div>
+      </div>
 
+      <div className="max-w-3xl mx-auto px-8 py-6 space-y-4">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#1868b7]" />
           </div>
         ) : programs.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-            <Activity className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+          <div className="bg-white border border-[#cddff0] rounded-xl p-12 text-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: '#f0f6fc' }}>
+              <Activity className="h-8 w-8 text-[#c0dcf5]" />
+            </div>
             <p className="text-sm font-semibold text-slate-500">No programs yet.</p>
             <p className="text-xs text-slate-400 mt-1">
               {user?.role === 'doctor'
@@ -222,49 +247,76 @@ const DiseasePrograms: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {programs.map((program) => (
-              <div key={program.id} className="bg-white border border-slate-200 rounded-xl p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg shrink-0 ${program.program_type === 'diabetes' ? 'bg-blue-50' : 'bg-red-50'}`}>
-                      {program.program_type === 'diabetes'
-                        ? <Droplets className="h-4 w-4 text-blue-600" />
-                        : <Heart className="h-4 w-4 text-red-600" />}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-slate-900">{program.program_name}</span>
-                        <Badge variant={program.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                          {program.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
+          <div className="space-y-3">
+            {programs.map((program) => {
+              const isDiabetes = program.program_type === 'diabetes';
+              return (
+                <div
+                  key={program.id}
+                  className="bg-white border border-[#cddff0] rounded-xl overflow-hidden shadow-sm"
+                  style={{ borderLeft: `4px solid ${isDiabetes ? '#1868b7' : '#e11d48'}` }}
+                >
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="p-2.5 rounded-xl shrink-0"
+                          style={{
+                            background: isDiabetes ? '#f0f6fc' : '#fff0f3',
+                            border: `1px solid ${isDiabetes ? '#c0dcf5' : '#fecdd3'}`,
+                          }}
+                        >
+                          {isDiabetes
+                            ? <Droplets className="h-5 w-5 text-[#1868b7]" />
+                            : <Heart className="h-5 w-5 text-rose-500" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-slate-800 text-[15px]">{program.program_name}</span>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                program.is_active
+                                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+                              }`}
+                            >
+                              {program.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                          {program.patient_name && (
+                            <p className="text-xs text-slate-500 mb-1">Patient: <span className="font-medium text-slate-700">{program.patient_name}</span></p>
+                          )}
+                          <p className="text-xs text-slate-500 mb-2">
+                            Check-in: <span className="font-medium text-slate-700 capitalize">{program.check_in_frequency}</span>
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {program.target_metrics.map((m) => (
+                              <span
+                                key={m.metric_type}
+                                className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                                style={{ background: '#f0f6fc', color: '#1868b7', border: '1px solid #c0dcf5' }}
+                              >
+                                {m.metric_type}: {m.target_min}–{m.target_max} {m.unit}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                      {program.patient_name && (
-                        <p className="text-xs text-slate-500 mb-1">Patient: {program.patient_name}</p>
+                      {user?.role === 'patient' && program.is_active && (
+                        <Button
+                          size="sm"
+                          className="shrink-0 h-8 text-xs font-semibold border"
+                          style={{ background: '#f0f6fc', color: '#1868b7', borderColor: '#c0dcf5' }}
+                          onClick={() => { setSelectedProgram(program); setShowLogDialog(true); }}
+                        >
+                          Log Vital
+                        </Button>
                       )}
-                      <p className="text-xs text-slate-500">Check-in: {program.check_in_frequency}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {program.target_metrics.map((m) => (
-                          <span key={m.metric_type} className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                            {m.metric_type}: {m.target_min}–{m.target_max} {m.unit}
-                          </span>
-                        ))}
-                      </div>
                     </div>
                   </div>
-                  {user?.role === 'patient' && program.is_active && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 h-8 text-xs"
-                      onClick={() => { setSelectedProgram(program); setShowLogDialog(true); }}
-                    >
-                      Log Vital
-                    </Button>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -272,19 +324,21 @@ const DiseasePrograms: React.FC = () => {
       {/* Create Program Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Enroll Patient in Program</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-slate-800">Enroll Patient in Program</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Patient</label>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Patient</label>
               <Select value={selectedPatientUserId} onValueChange={setSelectedPatientUserId}>
-                <SelectTrigger><SelectValue placeholder="Select patient..." /></SelectTrigger>
+                <SelectTrigger className="border-[#c0dcf5] focus:ring-[#1868b7]"><SelectValue placeholder="Select patient..." /></SelectTrigger>
                 <SelectContent>
                   {patients.map((p) => <SelectItem key={p.id} value={p.user_id ?? p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Program Type</label>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Program Type</label>
               <Select
                 value={programType}
                 onValueChange={(v) => {
@@ -292,7 +346,7 @@ const DiseasePrograms: React.FC = () => {
                   setProgramName(PROGRAM_PRESETS[v]?.name ?? '');
                 }}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="border-[#c0dcf5] focus:ring-[#1868b7]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="diabetes">Diabetes Management</SelectItem>
                   <SelectItem value="hypertension">Hypertension Management</SelectItem>
@@ -301,13 +355,17 @@ const DiseasePrograms: React.FC = () => {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Program Name</label>
-              <Input value={programName} onChange={(e) => setProgramName(e.target.value)} />
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Program Name</label>
+              <Input
+                value={programName}
+                onChange={(e) => setProgramName(e.target.value)}
+                className="border-[#c0dcf5] focus-visible:ring-[#1868b7]"
+              />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Check-in Frequency</label>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Check-in Frequency</label>
               <Select value={frequency} onValueChange={setFrequency}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="border-[#c0dcf5] focus:ring-[#1868b7]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="daily">Daily</SelectItem>
                   <SelectItem value="weekly">Weekly</SelectItem>
@@ -320,7 +378,8 @@ const DiseasePrograms: React.FC = () => {
             <Button
               onClick={() => void handleCreate()}
               disabled={saving || !selectedPatientUserId}
-              className="bg-[#5442f5] hover:bg-[#4335c0] text-white"
+              className="text-white border-0"
+              style={{ background: 'linear-gradient(135deg, #1868b7 0%, #0891b2 100%)' }}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Enroll
@@ -332,12 +391,14 @@ const DiseasePrograms: React.FC = () => {
       {/* Log Vital Dialog */}
       <Dialog open={showLogDialog} onOpenChange={setShowLogDialog}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Log Vital Reading</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-slate-800">Log Vital Reading</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Metric</label>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Metric</label>
               <Select value={logMetricType} onValueChange={setLogMetricType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="border-[#c0dcf5] focus:ring-[#1868b7]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(selectedProgram?.target_metrics.length
                     ? selectedProgram.target_metrics.map((m) => ({
@@ -352,7 +413,7 @@ const DiseasePrograms: React.FC = () => {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">
                 Value ({VITAL_METRICS.find((m) => m.type === logMetricType)?.unit})
               </label>
               <Input
@@ -360,11 +421,18 @@ const DiseasePrograms: React.FC = () => {
                 value={logValue}
                 onChange={(e) => setLogValue(e.target.value)}
                 placeholder="Enter reading..."
+                className="border-[#c0dcf5] focus-visible:ring-[#1868b7]"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Notes (optional)</label>
-              <Textarea value={logNotes} onChange={(e) => setLogNotes(e.target.value)} placeholder="Any observations..." rows={2} />
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Notes (optional)</label>
+              <Textarea
+                value={logNotes}
+                onChange={(e) => setLogNotes(e.target.value)}
+                placeholder="Any observations..."
+                rows={2}
+                className="border-[#c0dcf5] focus-visible:ring-[#1868b7]"
+              />
             </div>
           </div>
           <DialogFooter>
@@ -372,7 +440,8 @@ const DiseasePrograms: React.FC = () => {
             <Button
               onClick={() => void handleLogVital()}
               disabled={loggingVital || !logValue}
-              className="bg-[#5442f5] hover:bg-[#4335c0] text-white"
+              className="text-white border-0"
+              style={{ background: 'linear-gradient(135deg, #1868b7 0%, #0891b2 100%)' }}
             >
               {loggingVital ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Save Reading
