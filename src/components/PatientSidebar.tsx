@@ -17,7 +17,11 @@ import {
   LogOut,
   Stethoscope,
   Heart,
-  BriefcaseMedical
+  BriefcaseMedical,
+  FolderOpen,
+  CalendarCheck,
+  Pill,
+  Activity,
 } from 'lucide-react';
 
 const PatientSidebar = () => {
@@ -27,6 +31,10 @@ const PatientSidebar = () => {
   const patientItems = [
     { title: 'AI Support', url: '/ai-chat', icon: Heart },
     { title: 'My Doctor', url: '/doctor-chat', icon: Stethoscope },
+    { title: 'Appointments', url: '/appointments', icon: CalendarCheck },
+    { title: 'Prescriptions', url: '/prescriptions', icon: Pill },
+    { title: 'My Programs', url: '/disease-programs', icon: Activity },
+    { title: 'My Records', url: '/my-records', icon: FolderOpen },
   ];
 
   const isActive = (path: string) => location.pathname === path;

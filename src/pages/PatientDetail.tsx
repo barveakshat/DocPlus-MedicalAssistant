@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, User, Mail, Phone, Calendar, MapPin, AlertTriangle, Pill, MessageCircle } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar, MapPin, AlertTriangle, Pill, MessageCircle, ClipboardList, Download } from 'lucide-react';
+import { patientToFHIR, downloadFHIRBundle, type FhirLabMetricInput, type FhirPrescriptionInput } from '@/services/fhirService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +50,10 @@ const PatientDetail = () => {
     follow_up_date: '',
   });
 
+  interface AdherenceEntry { drugName: string; frequency: string; logsLast30: number; expectedLast30: number; }
+  const [adherence, setAdherence] = useState<AdherenceEntry[]>([]);
+  const [exportingFhir, setExportingFhir] = useState(false);
+
   // Only allow doctors to access this page
   if (!user || user.role !== 'doctor') {
     return (
@@ -73,6 +78,38 @@ const PatientDetail = () => {
       fetchPatientDetails();
     }
   }, [id]);
+
+  const FREQ_TO_DAILY: Record<string, number> = {
+    'Once daily': 1, 'Twice daily': 2, 'Three times daily': 3, 'Four times daily': 4,
+    'Every 8 hours': 3, 'Every 12 hours': 2, 'Before meals': 3, 'After meals': 3, 'At bedtime': 1,
+  };
+
+  useEffect(() => {
+    const fetchAdherence = async () => {
+      if (!patient?.user_id) return;
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [{ data: rxData }, { data: logData }] = await Promise.all([
+        supabase.from('prescriptions').select('id, drug_name, frequency, status, issued_at')
+          .eq('patient_user_id', patient.user_id).eq('status', 'active'),
+        supabase.from('medication_logs').select('prescription_id')
+          .eq('patient_user_id', patient.user_id).gte('taken_at', thirtyDaysAgo),
+      ]);
+      if (!rxData) return;
+      const logCounts = new Map<string, number>();
+      (logData ?? []).forEach((l) => logCounts.set(l.prescription_id, (logCounts.get(l.prescription_id) ?? 0) + 1));
+      setAdherence(rxData.map((rx) => {
+        const daysActive = Math.min(30, Math.ceil((Date.now() - new Date(rx.issued_at).getTime()) / 86400000));
+        const perDay = FREQ_TO_DAILY[rx.frequency] ?? 1;
+        return {
+          drugName: rx.drug_name,
+          frequency: rx.frequency,
+          logsLast30: logCounts.get(rx.id) ?? 0,
+          expectedLast30: daysActive * perDay,
+        };
+      }));
+    };
+    void fetchAdherence();
+  }, [patient?.user_id]);
 
   const fetchPatientDetails = async () => {
     try {
@@ -115,6 +152,23 @@ const PatientDetail = () => {
         },
       });
     }
+  };
+
+  const exportFHIR = async () => {
+    if (!patient) return;
+    setExportingFhir(true);
+    const [{ data: labData }, { data: rxData }] = await Promise.all([
+      supabase.from('lab_metrics').select('*').eq('patient_id', patient.user_id ?? patient.id),
+      supabase.from('prescriptions').select('*').eq('patient_user_id', patient.user_id ?? patient.id),
+    ]);
+    const bundle = patientToFHIR(
+      patient,
+      (labData ?? []) as FhirLabMetricInput[],
+      (rxData ?? []) as FhirPrescriptionInput[]
+    );
+    downloadFHIRBundle(bundle, patient.name);
+    setExportingFhir(false);
+    toast({ title: 'FHIR export downloaded', description: `${patient.name}_FHIR_R4.json` });
   };
 
   const saveCareDetails = async () => {
@@ -231,10 +285,22 @@ const PatientDetail = () => {
                 </div>
               </div>
             </div>
-            <Button onClick={startChat} className="bg-gradient-primary">
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Start Chat
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void exportFHIR()}
+                disabled={exportingFhir}
+                className="text-slate-600"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                {exportingFhir ? 'Exporting...' : 'Export FHIR'}
+              </Button>
+              <Button onClick={startChat} className="bg-gradient-primary">
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Start Chat
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -353,6 +419,38 @@ const PatientDetail = () => {
               </div>
             </CardContent>
           </Card>
+
+          {adherence.length > 0 && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" /> Medication Adherence (Last 30 Days)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {adherence.map((entry) => {
+                  const pct = entry.expectedLast30 > 0
+                    ? Math.min(100, Math.round((entry.logsLast30 / entry.expectedLast30) * 100))
+                    : 0;
+                  const color = pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400';
+                  return (
+                    <div key={entry.drugName} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{entry.drugName}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {entry.logsLast30} / {entry.expectedLast30} doses · {pct}%
+                        </span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{entry.frequency}</p>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="lg:col-span-2">
             <CardHeader>

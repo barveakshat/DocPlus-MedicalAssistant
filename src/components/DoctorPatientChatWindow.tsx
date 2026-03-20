@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Send, User, Stethoscope, MessageCircle, Check, CheckCheck, Copy, FileText, Sparkles, Paperclip, Image as ImageIcon, Download, X } from 'lucide-react';
+import { Send, User, Stethoscope, MessageCircle, Check, CheckCheck, Copy, FileText, Sparkles, Paperclip, Image as ImageIcon, Download, X, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useDoctorPatientChat } from '@/hooks/useDoctorPatientChat';
+import { useDoctorTemplates } from '@/hooks/useDoctorTemplates';
 import { HuggingFaceService } from '@/services/huggingFaceService';
 
 interface DoctorPatientMessage {
@@ -59,12 +60,11 @@ const DoctorPatientChatWindow: React.FC<DoctorPatientChatWindowProps> = ({
   const { toast } = useToast();
   const effectiveUserId = user?.auth_user_id || user?.id;
 
-  const doctorTemplates = [
-    'Please upload your latest reports before our next discussion.',
-    'Please book a follow-up for 7 days from now.',
-    'Kindly monitor your symptoms and share updates by evening.',
-    'Please continue current medication and report any side effects immediately.'
-  ];
+  const [newTemplateText, setNewTemplateText] = useState('');
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
+  const { templates: doctorTemplates, addTemplate, deleteTemplate } = useDoctorTemplates(
+    user?.role === 'doctor' ? effectiveUserId : null
+  );
 
   // Use the doctor-patient chat hook
   const {
@@ -528,19 +528,80 @@ const DoctorPatientChatWindow: React.FC<DoctorPatientChatWindowProps> = ({
           )}
 
           {user?.role === 'doctor' && (
-            <div className="mb-3 flex flex-wrap gap-2">
-              {doctorTemplates.map((template) => (
+            <div className="mb-3 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {doctorTemplates.map((t) => (
+                  <div key={t.id} className="group relative inline-flex">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs pr-6"
+                      onClick={() => appendTemplate(t.content)}
+                    >
+                      {t.content.length > 36 ? `${t.content.slice(0, 36)}...` : t.content}
+                    </Button>
+                    <button
+                      type="button"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500"
+                      onClick={() => void deleteTemplate(t.id)}
+                      aria-label="Delete template"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
                 <Button
-                  key={template}
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="text-xs"
-                  onClick={() => appendTemplate(template)}
+                  className="text-xs text-[#5442f5] hover:text-[#4335c0]"
+                  onClick={() => setIsAddingTemplate((v) => !v)}
                 >
-                  {template.length > 36 ? `${template.slice(0, 36)}...` : template}
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add
                 </Button>
-              ))}
+              </div>
+              {isAddingTemplate && (
+                <div className="flex gap-2">
+                  <Input
+                    value={newTemplateText}
+                    onChange={(e) => setNewTemplateText(e.target.value)}
+                    placeholder="New quick-reply template..."
+                    className="text-xs h-8"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newTemplateText.trim()) {
+                        void addTemplate(newTemplateText);
+                        setNewTemplateText('');
+                        setIsAddingTemplate(false);
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      if (newTemplateText.trim()) {
+                        void addTemplate(newTemplateText);
+                        setNewTemplateText('');
+                        setIsAddingTemplate(false);
+                      }
+                    }}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => { setIsAddingTemplate(false); setNewTemplateText(''); }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </div>
           )}
           <div className="flex space-x-2">

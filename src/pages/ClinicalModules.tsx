@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Search, Users } from 'lucide-react';
 import ReportsDocumentsHub, { type ReportsInsights } from '@/components/ReportsDocumentsHub';
 import ClinicalDecisionSupportPanel from '@/components/ClinicalDecisionSupportPanel';
+import LabHistoryPanel from '@/components/LabHistoryPanel';
 import type { Database } from '@/integrations/supabase/types';
 
 type Patient = Database['public']['Tables']['patients']['Row'];
@@ -24,7 +25,7 @@ const ClinicalModules = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
-  const [activeModule, setActiveModule] = useState<'reports' | 'cds'>('reports');
+  const [activeModule, setActiveModule] = useState<'reports' | 'cds' | 'lab'>('reports');
   const [reportInsights, setReportInsights] = useState<ReportsInsights>({
     metrics: [],
     alerts: [],
@@ -201,6 +202,13 @@ const ClinicalModules = () => {
                     </Button>
                     <Button
                       type="button"
+                      variant={activeModule === 'lab' ? 'default' : 'outline'}
+                      onClick={() => setActiveModule('lab')}
+                    >
+                      Lab History
+                    </Button>
+                    <Button
+                      type="button"
                       variant={activeModule === 'cds' ? 'default' : 'outline'}
                       onClick={() => setActiveModule('cds')}
                     >
@@ -216,6 +224,11 @@ const ClinicalModules = () => {
                       patientName={activePatient.name || 'Patient'}
                       patientId={activePatient.user_id}
                       onInsightsChange={setReportInsights}
+                    />
+                  ) : activeModule === 'lab' ? (
+                    <LabHistoryPanel
+                      patientId={activePatient.user_id ?? activePatient.id}
+                      patientName={activePatient.name || 'Patient'}
                     />
                   ) : (
                     <ClinicalDecisionSupportPanel

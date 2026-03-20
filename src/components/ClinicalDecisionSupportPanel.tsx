@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { ShieldAlert, Syringe, Stethoscope, TriangleAlert } from 'lucide-react';
+import { Brain, Loader2, ShieldAlert, Syringe, Stethoscope, TriangleAlert } from 'lucide-react';
 import type { ReportsInsights } from '@/components/ReportsDocumentsHub';
+import { HuggingFaceService } from '@/services/huggingFaceService';
 
 interface ClinicalDecisionSupportPanelProps {
   patientName: string;
@@ -69,6 +71,14 @@ const getLatestMetricValue = (insights: ReportsInsights, type: string) => {
   return metric?.value;
 };
 
+interface RiskLevel { level: 'Low' | 'Medium' | 'High'; explanation: string; }
+interface AiRiskProfile {
+  cardiovascular: RiskLevel;
+  diabetic: RiskLevel;
+  medication: RiskLevel;
+  summary: string;
+}
+
 const ClinicalDecisionSupportPanel: React.FC<ClinicalDecisionSupportPanelProps> = ({
   patientName,
   insights,
@@ -76,6 +86,53 @@ const ClinicalDecisionSupportPanel: React.FC<ClinicalDecisionSupportPanelProps> 
   const [symptoms, setSymptoms] = useState('');
   const [medicationsInput, setMedicationsInput] = useState('');
   const [durationDays, setDurationDays] = useState('');
+  const [aiRiskProfile, setAiRiskProfile] = useState<AiRiskProfile | null>(null);
+  const [isLoadingRisk, setIsLoadingRisk] = useState(false);
+  const [riskError, setRiskError] = useState<string | null>(null);
+
+  const handleGenerateRiskProfile = async () => {
+    setIsLoadingRisk(true);
+    setRiskError(null);
+    setAiRiskProfile(null);
+
+    const metricsSummary = insights.metrics.length > 0
+      ? insights.metrics.slice(0, 5).map((m) => `${m.type}: ${m.value} ${m.unit ?? ''}`).join(', ')
+      : 'No metrics available';
+
+    const prompt = `You are a clinical risk assessment AI. Analyze the following patient data and return a JSON risk profile.
+
+Patient: ${patientName}
+Symptoms: ${symptoms || 'None reported'}
+Medications: ${medicationsInput || 'None listed'}
+Symptom duration: ${durationDays ? `${durationDays} days` : 'Not specified'}
+Lab metrics: ${metricsSummary}
+Abnormal alerts: ${insights.alerts.length > 0 ? insights.alerts.map((a) => a.description).join('; ') : 'None'}
+
+Respond ONLY with a valid JSON object in this exact format (no extra text, no markdown):
+{
+  "cardiovascular": { "level": "Low|Medium|High", "explanation": "brief reason" },
+  "diabetic": { "level": "Low|Medium|High", "explanation": "brief reason" },
+  "medication": { "level": "Low|Medium|High", "explanation": "brief reason" },
+  "summary": "one sentence overall clinical impression"
+}`;
+
+    const result = await HuggingFaceService.generateDoctorResponse(prompt, [], 'ai-doctor');
+    if (!result.success || !result.response) {
+      setRiskError(result.error ?? 'Failed to generate risk profile.');
+      setIsLoadingRisk(false);
+      return;
+    }
+
+    try {
+      const jsonMatch = result.response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON found');
+      const parsed = JSON.parse(jsonMatch[0]) as AiRiskProfile;
+      setAiRiskProfile(parsed);
+    } catch {
+      setRiskError('Could not parse AI response. Try again.');
+    }
+    setIsLoadingRisk(false);
+  };
 
   const normalizedSymptoms = symptoms.toLowerCase();
   const medications = useMemo(
@@ -292,6 +349,69 @@ const ClinicalDecisionSupportPanel: React.FC<ClinicalDecisionSupportPanelProps> 
           <p className="text-xs text-muted-foreground">
             This module provides decision support only. Final decisions remain with the treating clinician.
           </p>
+        </div>
+
+        <Separator />
+
+        <div className="rounded-md border p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium flex items-center gap-2">
+              <Brain className="h-4 w-4" /> AI Risk Profile
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleGenerateRiskProfile()}
+              disabled={isLoadingRisk}
+              className="h-7 text-xs"
+            >
+              {isLoadingRisk ? (
+                <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Analyzing...</>
+              ) : (
+                'Generate'
+              )}
+            </Button>
+          </div>
+
+          {riskError && (
+            <p className="text-xs text-destructive">{riskError}</p>
+          )}
+
+          {aiRiskProfile && (() => {
+            const colorClass = (level: string) =>
+              level === 'High' ? 'text-red-600 bg-red-50 border-red-200'
+              : level === 'Medium' ? 'text-amber-600 bg-amber-50 border-amber-200'
+              : 'text-green-600 bg-green-50 border-green-200';
+
+            return (
+              <div className="space-y-2">
+                {(
+                  [
+                    { label: 'Cardiovascular', key: 'cardiovascular' },
+                    { label: 'Diabetic', key: 'diabetic' },
+                    { label: 'Medication', key: 'medication' },
+                  ] as const
+                ).map(({ label, key }) => (
+                  <div key={key} className="flex items-start gap-2">
+                    <span className={`text-[11px] font-semibold border px-1.5 py-0.5 rounded shrink-0 ${colorClass(aiRiskProfile[key].level)}`}>
+                      {aiRiskProfile[key].level}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{label}: </span>
+                      {aiRiskProfile[key].explanation}
+                    </span>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground italic border-t pt-2 mt-1">{aiRiskProfile.summary}</p>
+              </div>
+            );
+          })()}
+
+          {!aiRiskProfile && !isLoadingRisk && !riskError && (
+            <p className="text-xs text-muted-foreground">
+              Click Generate to run an AI-powered risk assessment using the entered symptoms, medications, and uploaded lab metrics.
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

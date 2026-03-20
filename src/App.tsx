@@ -12,6 +12,10 @@ import PatientDetail from "./pages/PatientDetail";
 import RoleSelectionPage from "./pages/RoleSelectionPage";
 import PatientOnboardingPage from "./pages/PatientOnboardingPage";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import PatientMyRecords from "./pages/PatientMyRecords";
+import Appointments from "./pages/Appointments";
+import Prescriptions from "./pages/Prescriptions";
+import DiseasePrograms from "./pages/DiseasePrograms";
 
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -122,6 +126,40 @@ const AuthenticatedRoutes: React.FC = () => {
           <Route
             path="/clinical-modules"
             element={<DashboardLayout><ClinicalModules /></DashboardLayout>}
+          />
+          <Route
+            path="/appointments"
+            element={<DashboardLayout><Appointments /></DashboardLayout>}
+          />
+          <Route
+            path="/prescriptions"
+            element={<DashboardLayout><Prescriptions /></DashboardLayout>}
+          />
+          <Route
+            path="/disease-programs"
+            element={<DashboardLayout><DiseasePrograms /></DashboardLayout>}
+          />
+        </>
+      )}
+
+      {/* Patient-only routes */}
+      {user.role === 'patient' && (
+        <>
+          <Route
+            path="/my-records"
+            element={<DashboardLayout><PatientMyRecords /></DashboardLayout>}
+          />
+          <Route
+            path="/appointments"
+            element={<DashboardLayout><Appointments /></DashboardLayout>}
+          />
+          <Route
+            path="/prescriptions"
+            element={<DashboardLayout><Prescriptions /></DashboardLayout>}
+          />
+          <Route
+            path="/disease-programs"
+            element={<DashboardLayout><DiseasePrograms /></DashboardLayout>}
           />
         </>
       )}

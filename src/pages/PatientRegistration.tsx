@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Phone, Calendar, ArrowLeft, MapPin, AlertTriangle, Pill } from 'lucide-react';
+import { User, Mail, Phone, Calendar, ArrowLeft, MapPin, AlertTriangle, Pill, Upload } from 'lucide-react';
+import { fhirToPatient, type FhirBundle } from '@/services/fhirService';
 import { Link, useNavigate } from 'react-router-dom';
 import PatientCredentialsModal from '@/components/PatientCredentialsModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,45 @@ const PatientRegistration = () => {
     gender: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [importingFhir, setImportingFhir] = useState(false);
+
+  const handleFHIRImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportingFhir(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const bundle = JSON.parse(ev.target?.result as string) as FhirBundle;
+        const parsed = fhirToPatient(bundle);
+        if (!parsed) {
+          toast({ title: 'Invalid FHIR file', description: 'Could not find a Patient resource in this bundle.', variant: 'destructive' });
+          setImportingFhir(false);
+          return;
+        }
+        const nameParts = parsed.name.trim().split(' ');
+        setPatientData((prev) => ({
+          ...prev,
+          firstName: nameParts[0] ?? '',
+          lastName: nameParts.slice(1).join(' '),
+          gender: parsed.gender ?? '',
+          email: parsed.email ?? '',
+          phone: parsed.phone ?? '',
+          address: parsed.address ?? '',
+          medicalHistory: parsed.medical_history ?? '',
+          allergies: parsed.allergies ?? '',
+          emergencyContact: parsed.emergency_contact_name ?? '',
+          emergencyPhone: parsed.emergency_contact_phone ?? '',
+        }));
+        toast({ title: 'FHIR imported', description: `Fields pre-filled from ${file.name}. Review and save.` });
+      } catch {
+        toast({ title: 'Parse error', description: 'File is not valid JSON or FHIR.', variant: 'destructive' });
+      }
+      setImportingFhir(false);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [patientCredentials, setPatientCredentials] = useState({
     name: '',
@@ -313,8 +353,19 @@ const PatientRegistration = () => {
             Back to Patients
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-foreground">Register New Patient</h1>
-        <p className="text-muted-foreground">Add a new patient to your practice</p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Register New Patient</h1>
+            <p className="text-muted-foreground">Add a new patient to your practice</p>
+          </div>
+          <label className="cursor-pointer">
+            <input type="file" accept=".json,application/json" className="hidden" onChange={handleFHIRImport} />
+            <span className={`inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors ${importingFhir ? 'opacity-50 pointer-events-none' : ''}`}>
+              <Upload className="h-4 w-4" />
+              {importingFhir ? 'Importing...' : 'Import FHIR'}
+            </span>
+          </label>
+        </div>
       </div>
 
       <Card className="shadow-lg">

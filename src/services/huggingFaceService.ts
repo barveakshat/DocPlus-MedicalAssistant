@@ -56,7 +56,8 @@ export class HuggingFaceService {
   private static readonly BASE_URL = import.meta.env.DEV
     ? '/api/hf/v1'
     : 'https://router.huggingface.co/hf/v1';
-  private static readonly MODEL = import.meta.env.VITE_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3';
+  private static readonly MODEL = import.meta.env.VITE_HF_MODEL || 'meta-llama/Llama-3.3-70B-Instruct';
+  private static readonly FALLBACK_CHAT_MODEL = 'meta-llama/Llama-3.3-70B-Instruct';
   private static readonly API_KEY = import.meta.env.VITE_HF_API_KEY || '';
 
   /**
@@ -270,6 +271,17 @@ When either party asks about the other or about medical information, refer to th
         stream: false
       };
 
+      const sendRequest = async (body: HuggingFaceRequest) => {
+        return fetch(`${this.BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.API_KEY}`,
+          },
+          body: JSON.stringify(body),
+        });
+      };
+
       console.log('📤 Sending request to HuggingFace:', {
         model: requestBody.model,
         messageCount: messages.length,
@@ -277,23 +289,34 @@ When either party asks about the other or about medical information, refer to th
         apiKey: `${this.API_KEY.substring(0, 12)}...`
       });
 
-      const response = await fetch(`${this.BASE_URL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.API_KEY}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
+      let response = await sendRequest(requestBody);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: { message: 'Unknown error' } })) as HuggingFaceError;
-        console.error('AI API error:', response.status, errorData);
+        const errorCode = errorData.error?.code;
+        const shouldRetryWithFallback =
+          response.status === 400 &&
+          errorCode === 'model_not_supported' &&
+          requestBody.model !== this.FALLBACK_CHAT_MODEL;
 
-        return {
-          success: false,
-          error: `API Error ${response.status}: ${errorData.error?.message || 'Unknown error'}`
-        };
+        if (shouldRetryWithFallback) {
+          console.warn(`Primary HF model '${requestBody.model}' is not chat-compatible. Retrying with fallback '${this.FALLBACK_CHAT_MODEL}'.`);
+          const fallbackRequest: HuggingFaceRequest = {
+            ...requestBody,
+            model: this.FALLBACK_CHAT_MODEL,
+          };
+          response = await sendRequest(fallbackRequest);
+        }
+
+        if (!response.ok) {
+          const finalErrorData = await response.json().catch(() => ({ error: { message: 'Unknown error' } })) as HuggingFaceError;
+          console.error('AI API error:', response.status, finalErrorData);
+
+          return {
+            success: false,
+            error: `API Error ${response.status}: ${finalErrorData.error?.message || 'Unknown error'}`
+          };
+        }
       }
 
       const data: HuggingFaceResponse = await response.json();

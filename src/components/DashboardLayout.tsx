@@ -5,7 +5,8 @@ import DoctorSidebar from './DoctorSidebar';
 import PatientSidebar from './PatientSidebar';
 import DoctorProfile from './DoctorProfile';
 import PatientProfile from './PatientProfile';
-import { Search, Settings, LogOut, User as UserIcon, HelpCircle } from 'lucide-react';
+import NotificationBell from './NotificationBell';
+import { Settings, LogOut, User as UserIcon, HelpCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,7 +76,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             
             <div className="flex items-center space-x-4 ml-4">
               <div className="h-8 w-px bg-slate-200 hidden lg:block"></div>
-              
+
+              <NotificationBell />
+
               {user?.role === 'doctor' ? (
                 <>
                   <DoctorProfile open={isDoctorProfileOpen} onOpenChange={setIsDoctorProfileOpen} />

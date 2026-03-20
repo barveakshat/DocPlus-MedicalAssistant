@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { HuggingFaceService } from '@/services/huggingFaceService';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ChartContainer,
   ChartTooltip,
@@ -403,6 +404,23 @@ const ReportsDocumentsHub: React.FC<ReportsDocumentsHubProps> = ({
     });
   };
 
+  const persistMetricsToSupabase = async (metrics: ExtractedMetric[], sourceName: string) => {
+    if (metrics.length === 0 || !patientId) return;
+    const rows = metrics.map((m) => ({
+      patient_id: patientId,
+      metric_type: m.type,
+      metric_label: m.label,
+      value: m.value,
+      unit: m.unit,
+      reference_range: m.reference,
+      abnormal: m.abnormal,
+      source_document: sourceName,
+      recorded_at: m.recordedAt,
+    }));
+    const { error } = await supabase.from('lab_metrics').insert(rows);
+    if (error) console.error('Failed to persist lab metrics:', error.message);
+  };
+
   const processAndStoreText = (
     reportId: string,
     sourceName: string,
@@ -423,6 +441,9 @@ const ReportsDocumentsHub: React.FC<ReportsDocumentsHubProps> = ({
       alerts,
       extractedText: text,
     }), fallbackReport);
+
+    // Persist to Supabase in background (non-blocking)
+    void persistMetricsToSupabase(extractedMetrics, sourceName);
   };
 
   const handleFileUpload = async (files: FileList | null) => {

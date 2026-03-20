@@ -19,7 +19,10 @@ import {
   MessageCircle,
   BriefcaseMedical,
   Plus,
-  ActivitySquare
+  ActivitySquare,
+  CalendarCheck,
+  Pill,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -34,6 +37,9 @@ const DoctorSidebar = () => {
     { title: 'Dashboard', url: '/dashboard/doctor', icon: LayoutDashboard },
     { title: 'AI Assistant', url: '/ai-chat', icon: MessageCircle },
     { title: 'Patients', url: '/patients', icon: Users },
+    { title: 'Appointments', url: '/appointments', icon: CalendarCheck },
+    { title: 'Prescriptions', url: '/prescriptions', icon: Pill },
+    { title: 'Disease Programs', url: '/disease-programs', icon: Activity },
     { title: 'Clinical Modules', url: '/clinical-modules', icon: ActivitySquare },
   ];
 

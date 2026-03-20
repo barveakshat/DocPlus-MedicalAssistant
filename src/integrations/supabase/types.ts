@@ -130,6 +130,303 @@ export type Database = {
           },
         ]
       }
+      disease_programs: {
+        Row: {
+          id: string
+          patient_user_id: string
+          doctor_user_id: string
+          program_type: string
+          program_name: string
+          target_metrics: Json
+          check_in_frequency: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          patient_user_id: string
+          doctor_user_id: string
+          program_type: string
+          program_name: string
+          target_metrics?: Json
+          check_in_frequency?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          patient_user_id?: string
+          doctor_user_id?: string
+          program_type?: string
+          program_name?: string
+          target_metrics?: Json
+          check_in_frequency?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vital_logs: {
+        Row: {
+          id: string
+          program_id: string | null
+          patient_user_id: string
+          metric_type: string
+          value: number
+          unit: string
+          notes: string | null
+          logged_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          program_id?: string | null
+          patient_user_id: string
+          metric_type: string
+          value: number
+          unit: string
+          notes?: string | null
+          logged_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          program_id?: string | null
+          patient_user_id?: string
+          metric_type?: string
+          value?: number
+          unit?: string
+          notes?: string | null
+          logged_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      prescriptions: {
+        Row: {
+          id: string
+          doctor_user_id: string
+          patient_user_id: string
+          patient_id: string | null
+          drug_name: string
+          dose: string
+          frequency: string
+          duration: string
+          instructions: string | null
+          status: string
+          issued_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          doctor_user_id: string
+          patient_user_id: string
+          patient_id?: string | null
+          drug_name: string
+          dose: string
+          frequency: string
+          duration: string
+          instructions?: string | null
+          status?: string
+          issued_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          doctor_user_id?: string
+          patient_user_id?: string
+          patient_id?: string | null
+          drug_name?: string
+          dose?: string
+          frequency?: string
+          duration?: string
+          instructions?: string | null
+          status?: string
+          issued_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          id: string
+          doctor_user_id: string
+          patient_user_id: string
+          patient_id: string | null
+          scheduled_at: string
+          duration_minutes: number
+          type: string
+          status: string
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          doctor_user_id: string
+          patient_user_id: string
+          patient_id?: string | null
+          scheduled_at: string
+          duration_minutes?: number
+          type?: string
+          status?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          doctor_user_id?: string
+          patient_user_id?: string
+          patient_id?: string | null
+          scheduled_at?: string
+          duration_minutes?: number
+          type?: string
+          status?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      doctor_availability: {
+        Row: {
+          id: string
+          doctor_user_id: string
+          day_of_week: number | null
+          specific_date: string | null
+          start_time: string
+          end_time: string
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          doctor_user_id: string
+          day_of_week?: number | null
+          specific_date?: string | null
+          start_time: string
+          end_time: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          doctor_user_id?: string
+          day_of_week?: number | null
+          specific_date?: string | null
+          start_time?: string
+          end_time?: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      doctor_templates: {
+        Row: {
+          id: string
+          doctor_user_id: string
+          content: string
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          doctor_user_id: string
+          content: string
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          doctor_user_id?: string
+          content?: string
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          body: string
+          link: string | null
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          body: string
+          link?: string | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          body?: string
+          link?: string | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      lab_metrics: {
+        Row: {
+          id: string
+          patient_id: string
+          metric_type: string
+          metric_label: string
+          value: number
+          unit: string
+          reference_range: string | null
+          abnormal: boolean
+          source_document: string | null
+          recorded_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          metric_type: string
+          metric_label: string
+          value: number
+          unit: string
+          reference_range?: string | null
+          abnormal?: boolean
+          source_document?: string | null
+          recorded_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          metric_type?: string
+          metric_label?: string
+          value?: number
+          unit?: string
+          reference_range?: string | null
+          abnormal?: boolean
+          source_document?: string | null
+          recorded_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
@@ -206,6 +503,33 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      medication_logs: {
+        Row: {
+          id: string
+          prescription_id: string
+          patient_user_id: string
+          taken_at: string
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          prescription_id: string
+          patient_user_id: string
+          taken_at?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          prescription_id?: string
+          patient_user_id?: string
+          taken_at?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
       }
       symptoms: {
         Row: {

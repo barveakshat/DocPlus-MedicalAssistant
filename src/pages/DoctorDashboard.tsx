@@ -22,6 +22,7 @@ type DashboardPatient = {
   user_id: string | null;
   name: string;
   medical_history: string | null;
+  follow_up_date: string | null;
   created_at: string;
 };
 
@@ -114,7 +115,7 @@ const DoctorDashboard = () => {
 
         const { data: patientsData, error: patientsError } = await supabase
           .from('patients')
-          .select('id, user_id, name, medical_history, created_at')
+          .select('id, user_id, name, medical_history, follow_up_date, created_at')
           .eq('assigned_doctor_id', currentDoctorUserId)
           .order('created_at', { ascending: false });
 
@@ -316,6 +317,31 @@ const DoctorDashboard = () => {
     });
   }, [patients, sessions, messages, doctorUserId]);
 
+  const upcomingFollowUps = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const in14Days = new Date(today);
+    in14Days.setDate(today.getDate() + 14);
+
+    return patients
+      .filter((p) => p.follow_up_date)
+      .map((p) => {
+        const followUp = new Date(p.follow_up_date!);
+        followUp.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((followUp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return { ...p, followUpDate: followUp, diffDays };
+      })
+      .filter((p) => p.diffDays <= 14)
+      .sort((a, b) => a.diffDays - b.diffDays);
+  }, [patients]);
+
+  const formatFollowUpLabel = (diffDays: number) => {
+    if (diffDays < 0) return { label: `${Math.abs(diffDays)}d overdue`, color: 'text-red-600 bg-red-50 border-red-200' };
+    if (diffDays === 0) return { label: 'Today', color: 'text-amber-600 bg-amber-50 border-amber-200' };
+    if (diffDays === 1) return { label: 'Tomorrow', color: 'text-blue-600 bg-blue-50 border-blue-200' };
+    return { label: `In ${diffDays}d`, color: 'text-slate-600 bg-slate-50 border-slate-200' };
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Completed': return 'bg-emerald-100 text-emerald-700';
@@ -390,51 +416,61 @@ const DoctorDashboard = () => {
         {/* Two Column Layout for the rest */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Left Column - Schedule */}
+          {/* Left Column - Upcoming Follow-ups */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
               <div className="px-6 py-5 border-b border-slate-100/80 flex justify-between items-center">
                 <h2 className="text-[16px] font-bold text-slate-900 flex items-center">
-                  <Clock className="w-4 h-4 mr-2 text-slate-400" />
-                  Today's Schedule
+                  <Calendar className="w-4 h-4 mr-2 text-slate-400" />
+                  Upcoming Follow-ups
                 </h2>
-                <button 
+                <button
                   onClick={() => navigate('/patients')}
                   className="text-[13px] font-bold text-[#5442f5] hover:text-[#4335c0] flex items-center transition-colors"
                 >
-                  View All <ArrowUpRight className="w-3 h-3 ml-0.5" />
+                  All Patients <ArrowUpRight className="w-3 h-3 ml-0.5" />
                 </button>
               </div>
-              
+
               <div className="divide-y divide-slate-100/80 flex-1 overflow-y-auto">
                 {loading ? (
-                  <div className="p-6 text-center text-slate-500 text-sm font-medium">Loading schedule...</div>
-                ) : todaySchedule.length === 0 ? (
-                  <div className="p-6 text-center text-slate-500 text-sm font-medium">No consultations yet.</div>
-                ) : todaySchedule.map((appt) => (
-                  <div key={appt.id} className="p-6 hover:bg-slate-50/50 transition-colors flex items-center justify-between group cursor-pointer border-l-2 border-transparent hover:border-[#5442f5]">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-sm shadow-sm ring-2 ring-white overflow-hidden">
-                         <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${appt.name}`} alt={appt.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-[14px] leading-tight mb-0.5">{appt.name}</h4>
-                        <p className="text-[13px] text-slate-500 font-medium">{appt.type}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-6">
-                      <div className="text-right">
-                        <span className="block font-bold text-slate-800 text-[14px]">{appt.time}</span>
-                        <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide ${getStatusColor(appt.status)}`}>
-                          {appt.status}
-                        </span>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ArrowUpRight className="w-4 h-4" />
-                      </Button>
-                    </div>
+                  <div className="p-6 text-center text-slate-500 text-sm font-medium">Loading follow-ups...</div>
+                ) : upcomingFollowUps.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Clock className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 text-sm font-medium">No follow-ups in the next 14 days.</p>
+                    <p className="text-slate-400 text-xs mt-1">Set follow-up dates on patient profiles to see them here.</p>
                   </div>
-                ))}
+                ) : upcomingFollowUps.map((p) => {
+                  const { label, color } = formatFollowUpLabel(p.diffDays);
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-5 hover:bg-slate-50/50 transition-colors flex items-center justify-between group cursor-pointer border-l-2 border-transparent hover:border-[#5442f5]"
+                      onClick={() => navigate(`/patient/${p.id}`)}
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-sm shadow-sm ring-2 ring-white overflow-hidden">
+                          <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${p.name}`} alt={p.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900 text-[14px] leading-tight mb-0.5">{p.name}</h4>
+                          <p className="text-[12px] text-slate-500 font-medium">
+                            {p.followUpDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`text-[11px] font-bold border px-2 py-0.5 rounded ${color}`}>
+                          {label}
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ArrowUpRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

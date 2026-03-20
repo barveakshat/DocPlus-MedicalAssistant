@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDoctorPatientChat } from '@/hooks/useDoctorPatientChat';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import DoctorPatientChatWindow from '@/components/DoctorPatientChatWindow';
-import { Stethoscope, User, MessageCircle } from 'lucide-react';
+import SymptomTriageWizard, { type TriageResult } from '@/components/SymptomTriageWizard';
+import { Stethoscope, AlertTriangle, CheckCircle, Phone } from 'lucide-react';
 
 interface DoctorInfo {
   id: string;
@@ -30,6 +32,8 @@ interface PatientCarePlanInfo {
   follow_up_date: string | null;
 }
 
+const TRIAGE_SESSION_KEY = 'docplus_triage_done';
+
 const PatientDoctorChat = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -40,6 +44,8 @@ const PatientDoctorChat = () => {
     follow_up_date: null,
   });
   const [loading, setLoading] = useState(true);
+  const [showTriage, setShowTriage] = useState(false);
+  const [triageResult, setTriageResult] = useState<TriageResult | null>(null);
 
   // Check if user is a patient
   if (!user || user.role !== 'patient') {
@@ -70,6 +76,24 @@ const PatientDoctorChat = () => {
     markMessagesAsRead: markDoctorPatientMessagesAsRead,
     fetchSessions: refreshDoctorPatientSessions,
   } = useDoctorPatientChat(currentSession?.id || null);
+
+  // Show triage wizard if not done this session
+  useEffect(() => {
+    if (user?.role === 'patient' && !sessionStorage.getItem(TRIAGE_SESSION_KEY)) {
+      setShowTriage(true);
+    }
+  }, [user?.role]);
+
+  const handleTriageComplete = (result: TriageResult) => {
+    sessionStorage.setItem(TRIAGE_SESSION_KEY, '1');
+    setTriageResult(result);
+    setShowTriage(false);
+  };
+
+  const handleTriageSkip = () => {
+    sessionStorage.setItem(TRIAGE_SESSION_KEY, '1');
+    setShowTriage(false);
+  };
 
   // Load assigned doctor information
   useEffect(() => {
@@ -323,8 +347,20 @@ const PatientDoctorChat = () => {
     );
   }
 
+  const triageBannerConfig = triageResult ? {
+    Emergency: { cls: 'bg-red-50 border-red-300 text-red-800', icon: <Phone className="h-4 w-4 shrink-0" /> },
+    Urgent: { cls: 'bg-amber-50 border-amber-300 text-amber-800', icon: <AlertTriangle className="h-4 w-4 shrink-0" /> },
+    Routine: { cls: 'bg-emerald-50 border-emerald-300 text-emerald-800', icon: <CheckCircle className="h-4 w-4 shrink-0" /> },
+  }[triageResult.urgency] : null;
+
   return (
     <div className="flex-1 h-full overflow-hidden bg-[#fafafa] p-6 md:p-8">
+      {showTriage && (
+        <SymptomTriageWizard
+          onComplete={handleTriageComplete}
+          onSkip={handleTriageSkip}
+        />
+      )}
       <div className="w-full h-full flex flex-col min-h-0">
         <div className="mb-6">
           <div className="flex items-center justify-between gap-4">
@@ -345,6 +381,20 @@ const PatientDoctorChat = () => {
             </div>
           </div>
         </div>
+
+        {triageResult && triageBannerConfig && (
+          <div className={`mb-4 flex items-start gap-2 border rounded-xl px-4 py-3 text-sm shrink-0 ${triageBannerConfig.cls}`}>
+            {triageBannerConfig.icon}
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Triage: {triageResult.urgency}</span>
+                <Badge variant="outline" className="text-[10px]">{triageResult.chiefComplaint}</Badge>
+              </div>
+              <p className="text-xs opacity-80">{triageResult.summary}</p>
+            </div>
+            <button className="ml-auto text-xs opacity-50 hover:opacity-80" onClick={() => setTriageResult(null)}>✕</button>
+          </div>
+        )}
 
         {(carePlanInfo.care_plan || carePlanInfo.follow_up_date) && (
           <Card className="mb-4 border-primary/20 bg-primary/5 shrink-0">
