@@ -47,11 +47,20 @@ const DoctorOnboarding = () => {
       // @ts-ignore - Supabase types issue
       const checkResult = await supabase
         .from('doctors')
-        .select('id')
+        .select('id, user_id')
         .eq('clerk_user_id', clerkUserId)
         .limit(1);
 
       if (checkResult.data && checkResult.data.length > 0) {
+        const existingDoctor = checkResult.data[0];
+
+        if (!existingDoctor.user_id) {
+          await supabase
+            .from('doctors')
+            .update({ user_id: clerkUserId })
+            .eq('id', existingDoctor.id);
+        }
+
         // Doctor profile already exists, redirect to dashboard
         toast({
           title: "Profile Already Exists",
@@ -85,12 +94,12 @@ const DoctorOnboarding = () => {
         }
       }
 
-      // Create doctor profile in Supabase using NULL for user_id and Clerk ID for clerk_user_id
+      // Create doctor profile in Supabase using Clerk ID for both identifiers
       const { data, error } = await supabase
         .from('doctors')
         .insert({
-          user_id: null, // Set to NULL since we're not using foreign key to auth.users
-          clerk_user_id: clerkUserId, // Use Clerk user ID as primary identifier
+          user_id: clerkUserId,
+          clerk_user_id: clerkUserId,
           username: uniqueUsername, // Use the unique username
           name: formData.name,
           registration_no: formData.registrationNo,

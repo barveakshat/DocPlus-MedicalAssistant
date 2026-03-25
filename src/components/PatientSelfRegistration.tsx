@@ -46,15 +46,35 @@ const PatientSelfRegistration = () => {
         throw new Error('User not authenticated');
       }
 
-      // Check if patient profile already exists
+      // Check if patient profile already exists (by either identifier)
       // @ts-ignore - Supabase types issue
-      const { data: existingPatient } = await supabase
+      const { data: existingPatientByClerkId } = await supabase
+        .from('patients')
+        .select('id, user_id')
+        .eq('clerk_user_id', clerkUserId)
+        .limit(1);
+
+      // @ts-ignore - Supabase types issue
+      const { data: existingPatientByUserId } = await supabase
         .from('patients')
         .select('id')
         .eq('user_id', clerkUserId)
         .limit(1);
 
-      if (existingPatient && existingPatient.length > 0) {
+      if (
+        (existingPatientByClerkId && existingPatientByClerkId.length > 0) ||
+        (existingPatientByUserId && existingPatientByUserId.length > 0)
+      ) {
+        if (existingPatientByClerkId && existingPatientByClerkId.length > 0) {
+          const existingPatient = existingPatientByClerkId[0] as { id: string; user_id?: string | null };
+          if (!existingPatient.user_id) {
+            await supabase
+              .from('patients')
+              .update({ user_id: clerkUserId })
+              .eq('id', existingPatient.id);
+          }
+        }
+
         toast({
           title: "Profile Already Exists",
           description: "You already have a patient profile. Redirecting to dashboard...",
@@ -68,6 +88,7 @@ const PatientSelfRegistration = () => {
         .from('patients')
         .insert({
           user_id: clerkUserId,
+          clerk_user_id: clerkUserId,
           name: patientData.name,
           age: patientData.age ? parseInt(patientData.age) : null,
           email: patientData.email,

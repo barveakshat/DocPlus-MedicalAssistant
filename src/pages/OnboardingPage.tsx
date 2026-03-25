@@ -45,6 +45,7 @@ const OnboardingPage: React.FC = () => {
           username: doctorData.username,
           name: doctorData.name,
           registration_no: doctorData.registrationNo,
+          clerk_user_id: clerkUser.id,
           user_id: clerkUser.id, // Use Clerk ID as user_id for now
         })
         .select()
@@ -85,6 +86,7 @@ const OnboardingPage: React.FC = () => {
         .insert({
           name: patientData.name,
           email: clerkUser.primaryEmailAddress?.emailAddress,
+          clerk_user_id: clerkUser.id,
           age: patientData.age ? parseInt(patientData.age) : null,
           gender: patientData.gender || null,
           phone: patientData.phone || null,

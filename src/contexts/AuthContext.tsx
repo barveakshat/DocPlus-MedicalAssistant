@@ -118,6 +118,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (doctors && doctors.length > 0) {
           const doctor = doctors[0];
+
+          if (!doctor.user_id) {
+            await supabase
+              .from('doctors')
+              .update({ user_id: clerkUserId })
+              .eq('id', doctor.id);
+          }
+
           setUser({
             id: clerkUserId,
             user_id: doctor.id,
@@ -165,6 +173,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (patients && patients.length > 0) {
           const patient = patients[0];
+
+          if (!patient.user_id) {
+            await supabase
+              .from('patients')
+              .update({ user_id: clerkUserId })
+              .eq('id', patient.id);
+          }
+
           setUser({
             id: clerkUserId,
             user_id: patient.id,
