@@ -77,7 +77,10 @@ const AuthenticatedRoutes: React.FC = () => {
     <Routes>
       {/* Redirect roots to AI Chat */}
       <Route path="/" element={<Navigate to="/ai-chat" replace />} />
-      <Route path="/dashboard" element={<Navigate to="/dashboard/doctor" replace />} />
+      <Route
+        path="/dashboard"
+        element={<Navigate to={user.role === 'doctor' ? '/dashboard/doctor' : '/dashboard/patient'} replace />}
+      />
       <Route path="/auth-redirect" element={<Navigate to="/ai-chat" replace />} />
 
       {/* Doctor Dashboard */}
@@ -88,6 +91,15 @@ const AuthenticatedRoutes: React.FC = () => {
             <DoctorDashboard />
           </DashboardLayout>
         } 
+      />
+
+      <Route
+        path="/dashboard/patient"
+        element={
+          <DashboardLayout>
+            <PatientMyRecords />
+          </DashboardLayout>
+        }
       />
 
       {/* AI Chat — available to all roles */}
