@@ -51,11 +51,12 @@ export interface HuggingFaceError {
 }
 
 export class HuggingFaceService {
-  // Hugging Face Inference API (OpenAI-compatible endpoint)
-  // In development, route through Vite proxy to bypass CORS
+  // Hugging Face Router OpenAI-compatible API.
+  // Use Vite proxy in development to bypass CORS.
+  // Supports optional override via VITE_HF_BASE_URL.
   private static readonly BASE_URL = import.meta.env.DEV
-    ? '/api/hf/v1'
-    : 'https://router.huggingface.co/hf/v1';
+    ? (import.meta.env.VITE_HF_BASE_URL || '/api/hf/v1')
+    : (import.meta.env.VITE_HF_BASE_URL || 'https://router.huggingface.co/v1');
   private static readonly MODEL = import.meta.env.VITE_HF_MODEL || 'meta-llama/Llama-3.3-70B-Instruct';
   private static readonly FALLBACK_CHAT_MODEL = 'meta-llama/Llama-3.3-70B-Instruct';
   private static readonly API_KEY = import.meta.env.VITE_HF_API_KEY || '';
